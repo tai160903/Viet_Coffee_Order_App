@@ -1,15 +1,20 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { Text, TouchableOpacity } from "react-native";
+import "react-native-reanimated";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   if (!loaded) {
@@ -18,12 +23,80 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#f8f9fa",
+          },
+          headerTintColor: "#2d3436",
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
+          headerShadowVisible: false,
+          animation: "slide_from_right",
+          // Add a login button to the header
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() =>
+                alert("Login functionality will be implemented soon!")
+              }
+              style={{
+                backgroundColor: "#0984e3",
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                marginRight: 8,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "500" }}>Login</Text>
+            </TouchableOpacity>
+          ),
+        }}
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            headerTitle: "Vietnamese Coffee",
+            headerLargeTitle: true,
+            // You can override the login button for specific screens if needed
+            headerRight: () => (
+              <TouchableOpacity
+                onPress={() =>
+                  alert("Login functionality will be implemented soon!")
+                }
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "#0984e3",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 16,
+                  marginRight: 8,
+                }}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={16}
+                  color="white"
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={{ color: "white", fontWeight: "500" }}>Login</Text>
+              </TouchableOpacity>
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="details/[id]"
+          options={{
+            headerTitle: "Customize Order",
+            headerBackTitle: "Menu",
+            presentation: "card",
+          }}
+        />
+        <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
     </ThemeProvider>
   );
 }
