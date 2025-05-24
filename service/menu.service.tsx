@@ -3,7 +3,6 @@ import axios from "axios";
 const productService = {
   getMenuList: async () => {
     const resposive = await axios.get("https://viet-cafe.onrender.com/Product");
-    console.log("resposive", resposive);
     return resposive?.data?.data;
   },
   getDetailsProduct: async (id: string) => {
