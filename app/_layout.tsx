@@ -8,95 +8,105 @@ import {
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity, useWindowDimensions } from "react-native";
 import "react-native-reanimated";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const { width } = useWindowDimensions();
 
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: "#f8f9fa",
-          },
-          headerTintColor: "#2d3436",
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
-          headerShadowVisible: false,
-          animation: "slide_from_right",
-          // Add a login button to the header
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() =>
-                alert("Login functionality will be implemented soon!")
-              }
-              style={{
-                backgroundColor: "#0984e3",
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                marginRight: 8,
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "right", "left"]}>
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: "#f8f9fa",
+              },
+              headerTintColor: "#2d3436",
+              headerTitleStyle: {
+                fontWeight: "bold",
+              },
+              headerShadowVisible: false,
+              animation: "slide_from_right",
+              contentStyle: { backgroundColor: "#f8f9fa" },
+              headerLargeTitle: width >= 768,
+              headerLargeTitleShadowVisible: false,
+              headerRight: () => (
+                <TouchableOpacity
+                  onPress={() =>
+                    alert("Login functionality will be implemented soon!")
+                  }
+                  style={{
+                    backgroundColor: "#0984e3",
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 16,
+                    marginRight: 8,
+                  }}
+                >
+                  <Text style={{ color: "white", fontWeight: "500" }}>
+                    Login
+                  </Text>
+                </TouchableOpacity>
+              ),
+            }}
+          >
+            <Stack.Screen
+              name="index"
+              options={{
+                headerTitle: "Việt Coffee",
+                headerLargeTitle: true,
+                headerRight: () => (
+                  <TouchableOpacity
+                    onPress={() =>
+                      alert("Login functionality will be implemented soon!")
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#0984e3",
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                      marginRight: 8,
+                    }}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={16}
+                      color="white"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={{ color: "white", fontWeight: "500" }}>
+                      Login
+                    </Text>
+                  </TouchableOpacity>
+                ),
               }}
-            >
-              <Text style={{ color: "white", fontWeight: "500" }}>Login</Text>
-            </TouchableOpacity>
-          ),
-        }}
-      >
-        <Stack.Screen
-          name="index"
-          options={{
-            headerTitle: "Vietnamese Coffee",
-            headerLargeTitle: true,
-            // You can override the login button for specific screens if needed
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() =>
-                  alert("Login functionality will be implemented soon!")
-                }
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#0984e3",
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 16,
-                  marginRight: 8,
-                }}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={16}
-                  color="white"
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={{ color: "white", fontWeight: "500" }}>Login</Text>
-              </TouchableOpacity>
-            ),
-          }}
-        />
-        <Stack.Screen
-          name="details/[id]"
-          options={{
-            headerTitle: "Customize Order",
-            headerBackTitle: "Menu",
-            presentation: "card",
-          }}
-        />
-        <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
-      </Stack>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-    </ThemeProvider>
+            />
+            <Stack.Screen
+              name="details/[id]"
+              options={{
+                headerTitle: "Customize Order",
+                headerBackTitle: "Menu",
+                presentation: "card",
+              }}
+            />
+            <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
+          </Stack>
+          <StatusBar style="dark" />
+        </SafeAreaView>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

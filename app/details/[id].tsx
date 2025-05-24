@@ -11,148 +11,137 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { dataItems } from "../data";
+import productService from "../../service/menu.service";
+
+type Items = {
+  id: string;
+  name: string;
+  category: {
+    id: string;
+    name: string;
+  };
+  price: number;
+  image: string;
+  rating: number;
+  description: string;
+};
 
 export default function DetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
-  const [selectedTemperature, setSelectedTemperature] = useState<string | null>(
-    null
-  );
-  const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
-  const [selectedSugar, setSelectedSugar] = useState<string | null>(null);
-  const [totalPrice, setTotalPrice] = useState(0);
+  const [dataItems, setDataItems] = useState<Items>(); // Replace 'any' with your actual data type
+  // const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  // const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
+  // const [selectedTemperature, setSelectedTemperature] = useState<string | null>(
+  //   null
+  // );
+  // const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
+  // const [selectedSugar, setSelectedSugar] = useState<string | null>(null);
+  // const [totalPrice, setTotalPrice] = useState(0);
 
-  // Find the item based on the id parameter
-  const item = dataItems.find(
-    (item) => item.id.toString() === (typeof id === "string" ? id : String(id))
-  );
-
-  useEffect(() => {
-    if (item) {
-      // Set default selections
-      if (item.customizationOptions?.sizes) {
-        const sizes = Object.keys(item.customizationOptions.sizes);
-        if (sizes.length > 0) {
-          setSelectedSize(sizes[0]);
-        }
-      }
-
-      if (
-        item.customizationOptions?.temperature &&
-        item.customizationOptions.temperature.length > 0
-      ) {
-        setSelectedTemperature(item.customizationOptions.temperature[0]);
-      }
-
-      if (
-        item.customizationOptions?.milk &&
-        item.customizationOptions.milk.length > 0
-      ) {
-        setSelectedMilk(item.customizationOptions.milk[0]);
-      }
-
-      if (
-        item.customizationOptions?.sugarLevels &&
-        item.customizationOptions.sugarLevels.length > 0
-      ) {
-        // Choose "Less Sugar" if available, otherwise first option
-        const defaultSugar = item.customizationOptions.sugarLevels.includes(
-          "Less Sugar"
-        )
-          ? "Less Sugar"
-          : item.customizationOptions.sugarLevels[0];
-        setSelectedSugar(defaultSugar);
-      }
+  const fetchDetails = async () => {
+    try {
+      const response = await productService.getDetailsProduct(id as string);
+      setDataItems(response);
+    } catch (error) {
+      console.error("Error fetching item details:", error);
     }
-  }, [item]);
-
-  // Calculate total price based on selections
-  useEffect(() => {
-    calculateTotalPrice();
-  }, [quantity, selectedSize, selectedAddOns, selectedMilk]);
-
-  const calculateTotalPrice = () => {
-    if (!item) return;
-
-    let price = item.price;
-
-    // Add size price
-    if (selectedSize && item.customizationOptions?.sizes) {
-      price += item.customizationOptions.sizes[selectedSize] || 0;
-    }
-
-    // Add add-ons prices
-    if (selectedAddOns.length > 0 && item.customizationOptions?.addOns) {
-      selectedAddOns.forEach((addon) => {
-        const addonPrice = item.customizationOptions?.addOns?.[addon];
-        if (typeof addonPrice === "number") {
-          price += addonPrice;
-        }
-      });
-    }
-
-    // Add milk price if it contains a price indicator (+$X.XX)
-    if (selectedMilk && selectedMilk.includes("+$")) {
-      const priceMatch = selectedMilk.match(/\+\$(\d+\.\d+)/);
-      if (priceMatch && priceMatch[1]) {
-        price += parseFloat(priceMatch[1]);
-      }
-    }
-
-    // Multiply by quantity
-    price *= quantity;
-
-    setTotalPrice(price);
   };
 
-  const toggleAddOn = (addon: string) => {
-    setSelectedAddOns((prev) => {
-      if (prev.includes(addon)) {
-        return prev.filter((item) => item !== addon);
-      } else {
-        return [...prev, addon];
-      }
-    });
-  };
+  useEffect(() => {
+    fetchDetails();
+  }, []);
 
-  // Fix the error in the "item not found" view
-  if (!item) {
-    return (
-      <SafeAreaView
-        style={[
-          styles.safeArea,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <Ionicons name="cafe-outline" size={60} color="#0984e3" />
-        <Text style={{ fontSize: 20, fontWeight: "bold", marginTop: 16 }}>
-          Item not found
-        </Text>
-        <TouchableOpacity
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#0984e3",
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            borderRadius: 25,
-            marginTop: 20,
-            width: 200,
-          }}
-          onPress={() => router.back()}
-        >
-          <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 16 }}>
-            Back to Menu
-          </Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  // // Calculate total price based on selections
+  // useEffect(() => {
+  //   calculateTotalPrice();
+  // }, [quantity, selectedSize, selectedAddOns, selectedMilk]);
+
+  // const calculateTotalPrice = () => {
+  //   if (!item) return;
+
+  //   let price = item.price;
+
+  //   // Add size price
+  //   if (selectedSize && item.customizationOptions?.sizes) {
+  //     price += item.customizationOptions.sizes[selectedSize] || 0;
+  //   }
+
+  //   // Add add-ons prices
+  //   if (selectedAddOns.length > 0 && item.customizationOptions?.addOns) {
+  //     selectedAddOns.forEach((addon) => {
+  //       const addonPrice = item.customizationOptions?.addOns?.[addon];
+  //       if (typeof addonPrice === "number") {
+  //         price += addonPrice;
+  //       }
+  //     });
+  //   }
+
+  //   // Add milk price if it contains a price indicator (+$X.XX)
+  //   if (selectedMilk && selectedMilk.includes("+$")) {
+  //     const priceMatch = selectedMilk.match(/\+\$(\d+\.\d+)/);
+  //     if (priceMatch && priceMatch[1]) {
+  //       price += parseFloat(priceMatch[1]);
+  //     }
+  //   }
+
+  //   // Multiply by quantity
+  //   price *= quantity;
+
+  //   setTotalPrice(price);
+  // };
+
+  // const toggleAddOn = (addon: string) => {
+  //   setSelectedAddOns((prev) => {
+  //     if (prev.includes(addon)) {
+  //       return prev.filter((item) => item !== addon);
+  //     } else {
+  //       return [...prev, addon];
+  //     }
+  //   });
+  // };
+
+  // // Fix the error in the "item not found" view
+  // if (!item) {
+  //   return (
+  //     <SafeAreaView
+  //       style={[
+  //         styles.safeArea,
+  //         { justifyContent: "center", alignItems: "center" },
+  //       ]}
+  //     >
+  //       <Ionicons name="cafe-outline" size={60} color="#0984e3" />
+  //       <Text style={{ fontSize: 20, fontWeight: "bold", marginTop: 16 }}>
+  //         Item not found
+  //       </Text>
+  //       <TouchableOpacity
+  //         style={{
+  //           flexDirection: "row",
+  //           alignItems: "center",
+  //           justifyContent: "center",
+  //           backgroundColor: "#0984e3",
+  //           paddingHorizontal: 24,
+  //           paddingVertical: 12,
+  //           borderRadius: 25,
+  //           marginTop: 20,
+  //           width: 200,
+  //         }}
+  //         onPress={() => router.back()}
+  //       >
+  //         <Ionicons
+  //           name="arrow-back-outline"
+  //           size={18}
+  //           color="#fff"
+  //           style={{ marginRight: 8 }}
+  //         />
+  //         <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 16 }}>
+  //           Back to Menu
+  //         </Text>
+  //       </TouchableOpacity>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   // Update the main return statement with enhanced image and styling
   return (
@@ -163,21 +152,28 @@ export default function DetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.imageContainer}>
-            <Image source={{ uri: item.image }} style={styles.image} />
+            <Image source={{ uri: dataItems?.image }} style={styles.image} />
             <View style={styles.badgeContainer}>
               <View style={styles.typeBadge}>
-                <Text style={styles.typeBadgeText}>{item.type}</Text>
+                <Text style={styles.typeBadgeText}>
+                  {dataItems?.category?.name}
+                </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.contentContainer}>
             <View style={styles.headerContainer}>
-              <Text style={styles.title}>{item.name}</Text>
-              <Text style={styles.basePrice}>{item.price.toFixed(2)}K</Text>
+              <Text style={styles.title}>{dataItems?.name}</Text>
+              <Text style={styles.basePrice}>
+                {dataItems?.price.toLocaleString("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                })}
+              </Text>
             </View>
 
-            <Text style={styles.description}>{item.description}</Text>
+            <Text style={styles.description}>{dataItems?.description}</Text>
 
             <View style={styles.divider} />
 
@@ -205,7 +201,7 @@ export default function DetailScreen() {
             </View>
 
             {/* Size selection */}
-            {item.customizationOptions?.sizes && (
+            {/* {item.customizationOptions?.sizes && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Kích cỡ:</Text>
                 <View style={styles.optionsContainer}>
@@ -232,10 +228,10 @@ export default function DetailScreen() {
                   )}
                 </View>
               </View>
-            )}
+            )} */}
 
             {/* Sugar level selection */}
-            {item.customizationOptions?.sugarLevels && (
+            {/* {item.customizationOptions?.sugarLevels && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Mức đường:</Text>
                 <View style={styles.optionsContainer}>
@@ -260,10 +256,10 @@ export default function DetailScreen() {
                   ))}
                 </View>
               </View>
-            )}
+            )} */}
 
             {/* Temperature selection */}
-            {item.customizationOptions?.temperature && (
+            {/* {item.customizationOptions?.temperature && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Nhiệt độ:</Text>
                 <View style={styles.optionsContainer}>
@@ -290,10 +286,10 @@ export default function DetailScreen() {
                   ))}
                 </View>
               </View>
-            )}
+            )} */}
 
             {/* Milk selection */}
-            {item.customizationOptions?.milk && (
+            {/* {item.customizationOptions?.milk && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Sữa:</Text>
                 <View style={styles.optionsContainer}>
@@ -318,10 +314,10 @@ export default function DetailScreen() {
                   ))}
                 </View>
               </View>
-            )}
+            )} */}
 
             {/* Add-ons selection */}
-            {item.customizationOptions?.addOns &&
+            {/* {item.customizationOptions?.addOns &&
               Object.keys(item.customizationOptions.addOns).length > 0 && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Thêm:</Text>
@@ -351,21 +347,26 @@ export default function DetailScreen() {
                     )}
                   </View>
                 </View>
-              )}
+              )} */}
           </View>
         </ScrollView>
 
         <View style={styles.footer}>
           <View style={styles.priceContainer}>
             <Text style={styles.priceLabel}>Total:</Text>
-            <Text style={styles.price}>{totalPrice.toFixed(2)}K VND</Text>
+            <Text style={styles.price}>
+              {new Intl.NumberFormat("vi-VN", {
+                style: "currency",
+                currency: "VND",
+              }).format(quantity * (dataItems?.price ?? 0))}
+            </Text>
           </View>
 
           <TouchableOpacity
             style={styles.addToCartButton}
             onPress={() => {
               // Add to cart logic here
-              alert(`Đã thêm ${quantity} ${item.name} vào giỏ hàng!`);
+              alert(`Đã thêm ${quantity} ${dataItems?.name} vào giỏ hàng!`);
               router.back();
             }}
           >
