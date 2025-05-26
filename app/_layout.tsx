@@ -1,26 +1,26 @@
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { Ionicons } from "@expo/vector-icons";
 import {
   DarkTheme,
   DefaultTheme,
+  Theme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import React from "react";
 import {
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useColorScheme,
   useWindowDimensions,
   View,
 } from "react-native";
 import "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-// Enhanced theme colors
-const lightTheme = {
+const lightTheme: Theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
@@ -33,11 +33,11 @@ const lightTheme = {
   },
 };
 
-const darkTheme = {
+const darkTheme: Theme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    primary: "#D2691E", // Lighter coffee brown for dark mode
+    primary: "#D2691E",
     background: "#1A1A1A",
     card: "#2C2C2C",
     text: "#FFFFFF",
@@ -49,16 +49,12 @@ const darkTheme = {
 export default function RootLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
+
   const { width } = useWindowDimensions();
 
-  // Responsive calculations
   const isTablet = width >= 768;
   const isLargeScreen = width >= 1024;
 
-  // Dynamic font sizes based on screen size
   const getFontSize = (base: number) => {
     if (isLargeScreen) return base + 4;
     if (isTablet) return base + 2;
@@ -66,10 +62,6 @@ export default function RootLayout() {
   };
 
   const currentTheme = colorScheme === "dark" ? darkTheme : lightTheme;
-
-  if (!loaded) {
-    return null;
-  }
 
   const styles = createStyles(currentTheme, width, isTablet, getFontSize);
 
@@ -133,17 +125,28 @@ export default function RootLayout() {
                     </View>
                   </View>
                 ),
-                headerLeft: () => null, // Remove default left component
-                headerRight: () => null, // Remove default right component
               }}
             />
             <Stack.Screen
               name="details/[id]"
               options={{
-                headerTitle: "Customize Order",
+                headerTitle: "Chi tiết sản phẩm",
                 headerTitleAlign: "center",
-                headerBackTitle: "Menu",
+                headerBackTitle: "Trở về",
                 presentation: Platform.OS === "ios" ? "card" : "modal",
+                headerStyle: [
+                  styles.headerStyle,
+                  { backgroundColor: currentTheme.colors.card },
+                ],
+              }}
+            />
+            <Stack.Screen
+              name="cart"
+              options={{
+                headerTitle: "Giỏ hàng",
+                headerTitleAlign: "center",
+                headerBackTitle: "Trở về",
+                presentation: "modal",
                 headerStyle: [
                   styles.headerStyle,
                   { backgroundColor: currentTheme.colors.card },
@@ -155,7 +158,7 @@ export default function RootLayout() {
               options={{
                 headerTitle: "Đăng nhập",
                 headerTitleAlign: "center",
-                headerBackTitle: "Back",
+                headerBackTitle: "Trở về",
                 presentation: Platform.OS === "ios" ? "modal" : "card",
                 headerStyle: [
                   styles.headerStyle,
@@ -168,7 +171,7 @@ export default function RootLayout() {
               options={{
                 headerTitle: "Đăng ký",
                 headerTitleAlign: "center",
-                headerBackTitle: "Back",
+                headerBackTitle: "Trở về",
                 presentation: Platform.OS === "ios" ? "modal" : "card",
                 headerStyle: [
                   styles.headerStyle,
@@ -179,7 +182,7 @@ export default function RootLayout() {
             <Stack.Screen
               name="+not-found"
               options={{
-                title: "Not Found",
+                title: "Không tìm thấy",
                 headerTitleAlign: "center",
                 headerStyle: [
                   styles.headerStyle,
@@ -200,7 +203,7 @@ export default function RootLayout() {
 }
 
 const createStyles = (
-  theme: any,
+  theme: Theme,
   width: number,
   isTablet: boolean,
   getFontSize: (size: number) => number

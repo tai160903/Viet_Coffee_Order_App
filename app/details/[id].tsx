@@ -1,7 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import {
+  Alert,
+  FlatList,
   Image,
   Platform,
   SafeAreaView,
@@ -11,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import productService from "../../service/menu.service";
+import productService from "../../service/product.service";
 
 type Items = {
   id: string;
@@ -26,20 +30,29 @@ type Items = {
   description: string;
 };
 
+type CartItem = {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+  customizations?: {
+    size?: {
+      id: string;
+      name: string;
+      extraPrice: number;
+    };
+  };
+};
+
 export default function DetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
-  const [dataItems, setDataItems] = useState<Items>(); // Replace 'any' with your actual data type
-  // const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  // const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
-  // const [selectedTemperature, setSelectedTemperature] = useState<string | null>(
-  //   null
-  // );
-  // const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
-  // const [selectedSugar, setSelectedSugar] = useState<string | null>(null);
-  // const [totalPrice, setTotalPrice] = useState(0);
-
+  const [dataItems, setDataItems] = useState<Items>();
+  const [sizes, setSizes] = useState<any[]>([]);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [totalPrice, setTotalPrice] = useState(0);
   const fetchDetails = async () => {
     try {
       const response = await productService.getDetailsProduct(id as string);
@@ -49,99 +62,164 @@ export default function DetailScreen() {
     }
   };
 
+  const fetchSize = async () => {
+    try {
+      const response = await productService.getAllSizes();
+      setSizes(response);
+    } catch (error) {
+      console.error("Error fetching sizes:", error);
+    }
+  };
+
   useEffect(() => {
+    if (!id) return;
     fetchDetails();
-  }, []);
+    fetchSize();
+  }, [id]);
 
-  // // Calculate total price based on selections
-  // useEffect(() => {
-  //   calculateTotalPrice();
-  // }, [quantity, selectedSize, selectedAddOns, selectedMilk]);
+  useEffect(() => {
+    if (dataItems) {
+      let price = dataItems.price;
+      if (selectedSize && sizes.length > 0) {
+        const size = sizes.find((s) => s.id === selectedSize);
+        if (size) {
+          price += size.extraPrice || 0;
+        }
+      }
+      price *= quantity;
 
-  // const calculateTotalPrice = () => {
-  //   if (!item) return;
+      setTotalPrice(price);
+    }
+  }, [dataItems, selectedSize, quantity, sizes]);
 
-  //   let price = item.price;
+  if (!dataItems) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.safeArea,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Ionicons name="cafe-outline" size={60} color="#0984e3" />
+        <Text style={{ fontSize: 20, fontWeight: "bold", marginTop: 16 }}>
+          Item not found
+        </Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#0984e3",
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 25,
+            marginTop: 20,
+            width: 200,
+          }}
+          onPress={() => router.back()}
+        >
+          <Ionicons
+            name="arrow-back-outline"
+            size={18}
+            color="#fff"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 16 }}>
+            Back to Menu
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
-  //   // Add size price
-  //   if (selectedSize && item.customizationOptions?.sizes) {
-  //     price += item.customizationOptions.sizes[selectedSize] || 0;
-  //   }
+  const addToCart = async () => {
+    if (!dataItems) return;
+    const cartItem: CartItem = {
+      id: dataItems.id,
+      name: dataItems.name,
+      price:
+        dataItems.price +
+        (selectedSize
+          ? sizes.find((s) => s.id === selectedSize)?.extraPrice || 0
+          : 0),
+      image: dataItems.image,
+      quantity: quantity,
+      customizations: selectedSize
+        ? {
+            size: {
+              id: selectedSize,
+              name: sizes.find((s) => s.id === selectedSize)?.name || "",
+              extraPrice:
+                sizes.find((s) => s.id === selectedSize)?.extraPrice || 0,
+            },
+          }
+        : undefined,
+    };
 
-  //   // Add add-ons prices
-  //   if (selectedAddOns.length > 0 && item.customizationOptions?.addOns) {
-  //     selectedAddOns.forEach((addon) => {
-  //       const addonPrice = item.customizationOptions?.addOns?.[addon];
-  //       if (typeof addonPrice === "number") {
-  //         price += addonPrice;
-  //       }
-  //     });
-  //   }
+    try {
+      // Use consistent storage key
+      const CART_STORAGE_KEY = "@cart_items";
 
-  //   // Add milk price if it contains a price indicator (+$X.XX)
-  //   if (selectedMilk && selectedMilk.includes("+$")) {
-  //     const priceMatch = selectedMilk.match(/\+\$(\d+\.\d+)/);
-  //     if (priceMatch && priceMatch[1]) {
-  //       price += parseFloat(priceMatch[1]);
-  //     }
-  //   }
+      // Get existing cart
+      const jsonValue = await AsyncStorage.getItem(CART_STORAGE_KEY);
+      const existingCartItems: CartItem[] =
+        jsonValue != null ? JSON.parse(jsonValue) : [];
 
-  //   // Multiply by quantity
-  //   price *= quantity;
+      // Check if item with same customizations already exists
+      const existingItemIndex = existingCartItems.findIndex((item) => {
+        if (item.id !== cartItem.id) return false;
 
-  //   setTotalPrice(price);
-  // };
+        // Compare customizations (only size for now)
+        const existingSizeId = item.customizations?.size?.id;
+        const newSizeId = cartItem.customizations?.size?.id;
 
-  // const toggleAddOn = (addon: string) => {
-  //   setSelectedAddOns((prev) => {
-  //     if (prev.includes(addon)) {
-  //       return prev.filter((item) => item !== addon);
-  //     } else {
-  //       return [...prev, addon];
-  //     }
-  //   });
-  // };
+        return existingSizeId === newSizeId;
+      });
 
-  // // Fix the error in the "item not found" view
-  // if (!item) {
-  //   return (
-  //     <SafeAreaView
-  //       style={[
-  //         styles.safeArea,
-  //         { justifyContent: "center", alignItems: "center" },
-  //       ]}
-  //     >
-  //       <Ionicons name="cafe-outline" size={60} color="#0984e3" />
-  //       <Text style={{ fontSize: 20, fontWeight: "bold", marginTop: 16 }}>
-  //         Item not found
-  //       </Text>
-  //       <TouchableOpacity
-  //         style={{
-  //           flexDirection: "row",
-  //           alignItems: "center",
-  //           justifyContent: "center",
-  //           backgroundColor: "#0984e3",
-  //           paddingHorizontal: 24,
-  //           paddingVertical: 12,
-  //           borderRadius: 25,
-  //           marginTop: 20,
-  //           width: 200,
-  //         }}
-  //         onPress={() => router.back()}
-  //       >
-  //         <Ionicons
-  //           name="arrow-back-outline"
-  //           size={18}
-  //           color="#fff"
-  //           style={{ marginRight: 8 }}
-  //         />
-  //         <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 16 }}>
-  //           Back to Menu
-  //         </Text>
-  //       </TouchableOpacity>
-  //     </SafeAreaView>
-  //   );
-  // }
+      if (existingItemIndex !== -1) {
+        // Update quantity if item exists
+        existingCartItems[existingItemIndex].quantity += quantity;
+
+        Alert.alert(
+          "Đã cập nhật giỏ hàng",
+          `Đã tăng số lượng ${dataItems.name} lên ${existingCartItems[existingItemIndex].quantity}.`
+        );
+      } else {
+        // Add new item
+        existingCartItems.push(cartItem);
+
+        Alert.alert(
+          "Đã thêm vào giỏ hàng",
+          `Đã thêm ${quantity} ${dataItems.name} vào giỏ hàng.`
+        );
+      }
+
+      // Save updated cart
+      await AsyncStorage.setItem(
+        CART_STORAGE_KEY,
+        JSON.stringify(existingCartItems)
+      );
+
+      // Ask user if they want to view cart or continue shopping
+      Alert.alert("Thành công", "Bạn muốn xem giỏ hàng hay tiếp tục mua sắm?", [
+        {
+          text: "Tiếp tục mua sắm",
+          onPress: () => router.back(),
+          style: "cancel",
+        },
+        {
+          text: "Xem giỏ hàng",
+          onPress: () => router.push("/cart"),
+        },
+      ]);
+    } catch (e) {
+      console.error("Failed to save the cart item to storage", e);
+      Alert.alert(
+        "Lỗi",
+        "Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại."
+      );
+    }
+  };
 
   // Update the main return statement with enhanced image and styling
   return (
@@ -166,7 +244,12 @@ export default function DetailScreen() {
             <View style={styles.headerContainer}>
               <Text style={styles.title}>{dataItems?.name}</Text>
               <Text style={styles.basePrice}>
-                {dataItems?.price.toLocaleString("vi-VN", {
+                {(
+                  (dataItems?.price ?? 0) +
+                  (selectedSize
+                    ? sizes.find((s) => s.id === selectedSize)?.extraPrice ?? 0
+                    : 0)
+                ).toLocaleString("vi-VN", {
                   style: "currency",
                   currency: "VND",
                 })}
@@ -201,34 +284,45 @@ export default function DetailScreen() {
             </View>
 
             {/* Size selection */}
-            {/* {item.customizationOptions?.sizes && (
+            {sizes && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Kích cỡ:</Text>
                 <View style={styles.optionsContainer}>
-                  {Object.entries(item.customizationOptions.sizes).map(
-                    ([size, price]) => (
+                  <FlatList
+                    data={sizes}
+                    renderItem={({ item }) => (
                       <TouchableOpacity
-                        key={size}
+                        key={item.id}
                         style={[
                           styles.optionButton,
-                          selectedSize === size && styles.optionButtonSelected,
+                          selectedSize === item.id &&
+                            styles.optionButtonSelected,
                         ]}
-                        onPress={() => setSelectedSize(size)}
+                        onPress={() => setSelectedSize(item.id)}
                       >
                         <Text
                           style={[
                             styles.optionText,
-                            selectedSize === size && styles.optionTextSelected,
+                            selectedSize === item.id &&
+                              styles.optionTextSelected,
                           ]}
                         >
-                          {size} {price > 0 ? `(+${price}K)` : ""}
+                          {item.name}{" "}
+                          {item.extraPrice > 0
+                            ? `+ ${item.extraPrice.toLocaleString("vi-VN", {
+                                style: "currency",
+                                currency: "VND",
+                              })}`
+                            : ""}
                         </Text>
                       </TouchableOpacity>
-                    )
-                  )}
+                    )}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                  />
                 </View>
               </View>
-            )} */}
+            )}
 
             {/* Sugar level selection */}
             {/* {item.customizationOptions?.sugarLevels && (
@@ -358,20 +452,13 @@ export default function DetailScreen() {
               {new Intl.NumberFormat("vi-VN", {
                 style: "currency",
                 currency: "VND",
-              }).format(quantity * (dataItems?.price ?? 0))}
+              }).format(totalPrice)}
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.addToCartButton}
-            onPress={() => {
-              // Add to cart logic here
-              alert(`Đã thêm ${quantity} ${dataItems?.name} vào giỏ hàng!`);
-              router.back();
-            }}
-          >
+          <TouchableOpacity style={styles.addToCartButton} onPress={addToCart}>
             <Ionicons name="cart-outline" size={20} color="#fff" />
-            <Text style={styles.addToCartButtonText}>Add to Cart</Text>
+            <Text style={styles.addToCartButtonText}>Thêm vào giỏ hàng</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

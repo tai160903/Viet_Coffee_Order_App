@@ -1,5 +1,6 @@
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import Loading from "@/components/Loading";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -13,7 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import productService from "../service/menu.service";
+import productService from "../service/product.service";
 
 type MenuItem = {
   id: string;
@@ -33,6 +34,7 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dataItems, setDataItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const numColumns = width >= 768 ? 3 : 2;
   const cardWidth = (width - (numColumns + 1) * 16) / numColumns;
@@ -47,15 +49,19 @@ export default function HomeScreen() {
 
   const fetchMenu = async () => {
     try {
+      setLoading(true);
       const response = await productService.getMenuList();
       setDataItems(response);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching menu data:", error);
     }
   };
-  useEffect(() => {
-    fetchMenu();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchMenu();
+    }, [])
+  );
 
   const filteredItems = dataItems.filter((item) => {
     const matchesSearch = item.name
@@ -101,6 +107,16 @@ export default function HomeScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Loading />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -159,6 +175,25 @@ export default function HomeScreen() {
           }
         />
       </View>
+      <TouchableOpacity onPress={() => router.push("/cart")}>
+        <View
+          style={{
+            position: "absolute",
+            bottom: 20,
+            right: 20,
+            backgroundColor: "#0984e3",
+            borderRadius: 50,
+            padding: 12,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 24 }}>+</Text>
+        </View>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

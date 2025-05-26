@@ -18,16 +18,12 @@ import {
 
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
     username: "",
     password: "",
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -40,23 +36,7 @@ export default function RegisterScreen() {
   };
 
   const validateForm = () => {
-    const { fullName, email, phone, username, password, confirmPassword } =
-      formData;
-
-    if (!fullName.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập họ và tên.");
-      return false;
-    }
-
-    if (!email.trim() || !email.includes("@")) {
-      Alert.alert("Lỗi", "Vui lòng nhập email hợp lệ.");
-      return false;
-    }
-
-    if (!phone.trim() || phone.length < 10) {
-      Alert.alert("Lỗi", "Vui lòng nhập số điện thoại hợp lệ.");
-      return false;
-    }
+    const { username, password, confirmPassword } = formData;
 
     if (!username.trim() || username.length < 3) {
       Alert.alert("Lỗi", "Tên đăng nhập phải có ít nhất 3 ký tự.");
@@ -70,11 +50,6 @@ export default function RegisterScreen() {
 
     if (password !== confirmPassword) {
       Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp.");
-      return false;
-    }
-
-    if (!acceptTerms) {
-      Alert.alert("Lỗi", "Vui lòng đồng ý với điều khoản sử dụng.");
       return false;
     }
 
@@ -171,29 +146,6 @@ export default function RegisterScreen() {
                     onChangeText={(text) => updateFormData("username", text)}
                     autoCapitalize="none"
                     autoComplete="username"
-                    placeholderTextColor="#A0A0A0"
-                  />
-                </View>
-              </View>
-
-              {/* Email Input */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Email *</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="mail-outline"
-                    size={20}
-                    color="#8B4513"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="example@email.com"
-                    value={formData.email}
-                    onChangeText={(text) => updateFormData("email", text)}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    autoComplete="email"
                     placeholderTextColor="#A0A0A0"
                   />
                 </View>
@@ -336,13 +288,9 @@ export default function RegisterScreen() {
 
               {/* Register Button */}
               <TouchableOpacity
-                style={[
-                  styles.registerButton,
-                  !acceptTerms && styles.registerButtonDisabled,
-                ]}
+                style={styles.registerButton}
                 onPress={handleRegister}
                 activeOpacity={0.8}
-                disabled={!acceptTerms}
               >
                 <Text style={styles.registerButtonText}>Tạo tài khoản</Text>
               </TouchableOpacity>
