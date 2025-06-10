@@ -1,15 +1,20 @@
 import axios from "axios";
 
 const authService = {
-  login: async (username: string, password: string): Promise<string> => {
-    const response = await axios.post(
+  login: async (
+    username: string,
+    email: string,
+    password: string
+  ): Promise<string> => {
+    const response: any = await axios.post(
       `${process.env.EXPO_PUBLIC_API_URL}/User/login`,
       {
         username: username,
+        email: email,
         password: password,
       }
     );
-    return response.data?.token ?? "";
+    return response;
   },
 
   register: async (
@@ -22,7 +27,7 @@ const authService = {
       email,
       password,
     });
-    const response = await axios.post(
+    const response: any = await axios.post(
       `${process.env.EXPO_PUBLIC_API_URL}/User/register`,
       {
         username: username,

@@ -1,7 +1,7 @@
 import Loading from "@/components/Loading";
 import { formatCurrency } from "@/utils/formatCurrency";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -15,7 +15,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import productService from "../services/product.service";
+import productService from "../../services/product.service";
 
 type MenuItem = {
   id: string;
@@ -56,19 +56,17 @@ export default function HomeScreen() {
       setLoading(false);
     } catch (error) {
       if (error instanceof Error) {
-        console.error("Error fetching menu dasta:", error.message);
+        console.error("Error fetching menu data:", error.message);
       } else {
         console.error("Error fetching menu data:", error);
       }
       setLoading(false);
     }
   };
-  useFocusEffect(
-    useCallback(() => {
-      fetchMenu();
-    }, [])
-  );
 
+  useEffect(() => {
+    fetchMenu();
+  }, []);
   const filteredItems = dataItems.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
@@ -173,27 +171,17 @@ export default function HomeScreen() {
           columnWrapperStyle={
             numColumns > 1 ? { justifyContent: "flex-start" } : undefined
           }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {searchQuery || selectedCategory !== "All"
+                  ? "Không tìm thấy sản phẩm nào"
+                  : "Không có sản phẩm nào"}
+              </Text>
+            </View>
+          }
         />
       </View>
-      <TouchableOpacity onPress={() => router.push("/cart")}>
-        <View
-          style={{
-            position: "absolute",
-            bottom: 20,
-            right: 20,
-            backgroundColor: "#0984e3",
-            borderRadius: 50,
-            padding: 12,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        >
-          <Text style={{ color: "#fff", fontSize: 24 }}>+</Text>
-        </View>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -290,5 +278,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#0984e3",
     marginTop: 4,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#636e72",
+    textAlign: "center",
   },
 });

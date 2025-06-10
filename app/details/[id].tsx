@@ -52,8 +52,6 @@ export default function DetailScreen() {
     }
   };
 
-  console.log(dataItems?.category?.name);
-
   useEffect(() => {
     let isActive = true;
 

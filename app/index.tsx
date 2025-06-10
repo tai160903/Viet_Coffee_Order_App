@@ -1,8 +1,9 @@
+import authService from "@/services/auth.service";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +16,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function LoginScreen() {
   const [password, setPassword] = useState("");
@@ -28,28 +30,72 @@ export default function LoginScreen() {
   const containerPadding = isTablet ? 40 : 24;
   const logoSize = isTablet ? 120 : 100;
 
-  const handleLogin = () => {
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await AsyncStorage.getItem("userToken");
+      if (token) {
+        router.replace("/menu");
+      }
+    };
+    checkToken();
+  }, []);
+
+  const handleLogin = async () => {
     if (!username.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập tên đăng nhập.");
+      Toast.show({
+        type: "error",
+        text1: "Vui lòng nhập tài khoản.",
+        text2: "Tên đăng nhập không được để trống.",
+      });
       return;
     }
 
     if (!email.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập email.");
+      Toast.show({
+        type: "error",
+        text1: "Vui lòng nhập email.",
+        text2: "Email không được để trống.",
+      });
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      Toast.show({
+        type: "error",
+        text1: "Vui lòng nhập email hợp lệ.",
+        text2: "Email không đúng định dạng.",
+      });
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Mật khẩu không hợp lệ", "Mật khẩu phải có ít nhất 6 ký tự.");
+      Toast.show({
+        type: "error",
+        text1: "Vui lòng nhập mật khẩu.",
+        text2: "Mật khẩu phải có ít nhất 6 ký tự.",
+      });
       return;
     }
 
-    Alert.alert("Đăng nhập thành công", "Chào mừng bạn trở lại!", [
-      {
-        text: "OK",
-        onPress: () => router.replace("/menu"),
-      },
-    ]);
+    const response: any = await authService.login(username, email, password);
+    if (response.status !== 200) {
+      Toast.show({
+        type: "error",
+        text1: `${
+          response.data.message || "Vui lòng kiểm tra lại thông tin đăng nhập."
+        }`,
+        text2: "Vui lòng thử lại sau.",
+      });
+      return;
+    } else {
+      await AsyncStorage.setItem("userToken", response.data.data.accessToken);
+      Toast.show({
+        type: "success",
+        text1: "Đăng nhập thành công!",
+        text2: "Chào mừng bạn trở lại!",
+      });
+      router.replace("/menu");
+    }
   };
 
   const handleRegisterNavigation = () => {
@@ -133,7 +179,7 @@ export default function LoginScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Nhập email"
-                    value={username}
+                    value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
                     autoComplete="email"

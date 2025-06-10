@@ -2,7 +2,6 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useTheme } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -25,7 +24,6 @@ interface UserProfile {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const theme = useTheme();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +83,7 @@ export default function ProfileScreen() {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: "white",
     },
     loadingContainer: {
       flex: 1,
@@ -96,7 +94,7 @@ export default function ProfileScreen() {
       padding: 20,
     },
     profileCard: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: "white",
       borderRadius: 12,
       padding: 20,
       marginBottom: 20,
@@ -117,7 +115,7 @@ export default function ProfileScreen() {
       width: 80,
       height: 80,
       borderRadius: 40,
-      backgroundColor: theme.colors.primary,
+      backgroundColor: "#ccc",
       justifyContent: "center",
       alignItems: "center",
       marginBottom: 12,
@@ -125,12 +123,12 @@ export default function ProfileScreen() {
     name: {
       fontSize: 24,
       fontWeight: "bold",
-      color: theme.colors.text,
+      color: "#333",
       textAlign: "center",
     },
     email: {
       fontSize: 16,
-      color: theme.colors.text,
+      color: "#666",
       opacity: 0.7,
       textAlign: "center",
       marginTop: 4,
@@ -143,7 +141,7 @@ export default function ProfileScreen() {
       alignItems: "center",
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border,
+      borderBottomColor: "#ddd",
     },
     infoIcon: {
       marginRight: 12,
@@ -151,15 +149,15 @@ export default function ProfileScreen() {
     infoLabel: {
       flex: 1,
       fontSize: 16,
-      color: theme.colors.text,
+      color: "#333",
     },
     infoValue: {
       fontSize: 16,
-      color: theme.colors.text,
+      color: "#666",
       opacity: 0.7,
     },
     logoutButton: {
-      backgroundColor: theme.colors.notification,
+      backgroundColor: "#e74c3c",
       borderRadius: 8,
       padding: 16,
       alignItems: "center",
@@ -175,8 +173,8 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.text, marginTop: 12 }}>
+        <ActivityIndicator size="large" color={"#0984e3"} />
+        <Text style={{ color: "#0984e3", marginTop: 12 }}>
           Đang tải thông tin...
         </Text>
       </View>
@@ -186,7 +184,7 @@ export default function ProfileScreen() {
   if (!userProfile) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={{ color: theme.colors.text }}>
+        <Text style={{ color: "#0984e3" }}>
           Không thể tải thông tin người dùng
         </Text>
       </View>
@@ -210,7 +208,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color={theme.colors.text}
+                color={"#333"}
                 style={styles.infoIcon}
               />
               <Text style={styles.infoLabel}>Email</Text>
@@ -222,7 +220,7 @@ export default function ProfileScreen() {
                 <Ionicons
                   name="call-outline"
                   size={20}
-                  color={theme.colors.text}
+                  color={"#333"}
                   style={styles.infoIcon}
                 />
                 <Text style={styles.infoLabel}>Số điện thoại</Text>
@@ -234,7 +232,7 @@ export default function ProfileScreen() {
               <Ionicons
                 name="calendar-outline"
                 size={20}
-                color={theme.colors.text}
+                color={"#333"}
                 style={styles.infoIcon}
               />
               <Text style={styles.infoLabel}>Ngày tham gia</Text>
