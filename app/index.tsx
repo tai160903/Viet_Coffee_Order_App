@@ -1,294 +1,425 @@
-import Loading from "@/components/Loading";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-  FlatList,
-  Image,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Platform,
-  StatusBar as RNStatusBar,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
   useWindowDimensions,
 } from "react-native";
-import productService from "../service/product.service";
 
-type MenuItem = {
-  id: string;
-  name: string;
-  category: {
-    id: string;
-    name: string;
-  };
-  price: number;
-  image: string;
-  rating: number;
-  description: string;
-};
-
-export default function HomeScreen() {
-  const { width } = useWindowDimensions();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dataItems, setDataItems] = useState<MenuItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [loading, setLoading] = useState(true);
+export default function LoginScreen() {
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const numColumns = width >= 768 ? 3 : 2;
-  const cardWidth = (width - (numColumns + 1) * 16) / numColumns;
+  const { width } = useWindowDimensions();
 
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(dataItems.map((item) => item.category?.name || ""))
-    ).filter(Boolean);
+  const isTablet = width >= 768;
+  const containerPadding = isTablet ? 40 : 24;
+  const logoSize = isTablet ? 120 : 100;
 
-    return ["All", ...uniqueCategories];
-  }, [dataItems]);
-
-  const fetchMenu = async () => {
-    try {
-      setLoading(true);
-      const response = await productService.getMenuList();
-      setDataItems(response);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching menu data:", error);
+  const handleLogin = () => {
+    if (!username.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập tên đăng nhập.");
+      return;
     }
-  };
-  useFocusEffect(
-    useCallback(() => {
-      fetchMenu();
-    }, [])
-  );
 
-  const filteredItems = dataItems.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || item.category.name === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+    if (!email.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập email.");
+      return;
+    }
 
-  const renderMenu = ({ item }: { item: MenuItem }) => {
-    const cardPadding = width >= 768 ? 12 : 8;
+    if (password.length < 6) {
+      Alert.alert("Mật khẩu không hợp lệ", "Mật khẩu phải có ít nhất 6 ký tự.");
+      return;
+    }
 
-    return (
-      <TouchableOpacity
-        style={[
-          styles.card,
-          {
-            margin: cardPadding,
-            width: cardWidth,
-            maxWidth: `${100 / numColumns - 4}%`,
-          },
-        ]}
-        onPress={() =>
-          router.push({
-            pathname: "/details/[id]",
-            params: { id: item.id.toString() },
-          })
-        }
-      >
-        <Image source={{ uri: item.image }} style={styles.cardImage} />
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          <Text style={styles.cardType}>{item.category.name}</Text>
-          <Text style={styles.cardPrice}>{`${item.price.toLocaleString(
-            "vi-VN",
-            {
-              style: "currency",
-              currency: "VND",
-            }
-          )}`}</Text>
-        </View>
-      </TouchableOpacity>
-    );
+    Alert.alert("Đăng nhập thành công", "Chào mừng bạn trở lại!", [
+      {
+        text: "OK",
+        onPress: () => router.replace("/menu"),
+      },
+    ]);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <Loading />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleRegisterNavigation = () => {
+    router.push("/register");
+  };
+
+  const styles = createStyles(isTablet, containerPadding, logoSize);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            placeholder="Tìm đồ uống yêu thích..."
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={(text) => setSearchQuery(text)}
-            placeholderTextColor="#999"
-          />
-        </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <Stack.Screen
+        options={{
+          title: "Đăng nhập",
+          headerShown: true,
+          headerBackVisible: true,
+          headerTitleStyle: {
+            fontWeight: "bold",
+            fontSize: isTablet ? 20 : 18,
+          },
+          headerStyle: {
+            backgroundColor: "#FFFFFF",
+          },
+        }}
+      />
 
-        <View style={styles.categoryContainer}>
-          <FlatList
-            horizontal
-            data={categories}
-            keyExtractor={(item) => item}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  selectedCategory === item && styles.categoryItemSelected,
-                ]}
-                onPress={() => setSelectedCategory(item)}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    selectedCategory === item && styles.categoryTextSelected,
-                  ]}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.categoryList}
-          />
-        </View>
-
-        <FlatList
-          data={filteredItems}
-          renderItem={renderMenu}
-          numColumns={numColumns}
-          key={`column-${numColumns}`}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[
-            styles.listContainer,
-            { paddingHorizontal: width >= 768 ? 12 : 8 },
-          ]}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
-          columnWrapperStyle={
-            numColumns > 1 ? { justifyContent: "flex-start" } : undefined
-          }
-        />
-      </View>
-      <TouchableOpacity onPress={() => router.push("/cart")}>
-        <View
-          style={{
-            position: "absolute",
-            bottom: 20,
-            right: 20,
-            backgroundColor: "#0984e3",
-            borderRadius: 50,
-            padding: 12,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
         >
-          <Text style={{ color: "#fff", fontSize: 24 }}>+</Text>
-        </View>
-      </TouchableOpacity>
-    </SafeAreaView>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoWrapper}>
+                <Ionicons name="cafe" size={logoSize * 0.6} color="#8B4513" />
+              </View>
+              <Text style={styles.logoText}>Việt Coffee</Text>
+              <Text style={styles.subtitle}>Chào mừng trở lại!</Text>
+            </View>
+          </View>
+
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            <View style={styles.formContainer}>
+              {/* Username Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Tên đăng nhập</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color="#8B4513"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nhập tên đăng nhập"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    placeholderTextColor="#A0A0A0"
+                  />
+                </View>
+              </View>
+
+              {/* Email Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color="#8B4513"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nhập email"
+                    value={username}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    placeholderTextColor="#A0A0A0"
+                  />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Mật khẩu</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#8B4513"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="password"
+                    placeholderTextColor="#A0A0A0"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      size={20}
+                      color="#8B4513"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Forgot Password */}
+              <TouchableOpacity
+                style={styles.forgotPassword}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+              </TouchableOpacity>
+
+              {/* Login Button */}
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.orContainer}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>HOẶC</Text>
+                <View style={styles.orLine} />
+              </View>
+
+              {/* Google Login */}
+              <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
+                <Ionicons name="logo-google" size={20} color="#EA4335" />
+                <Text style={styles.googleButtonText}>Tiếp tục với Google</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={styles.registerLink}
+              onPress={handleRegisterNavigation}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.registerText}>
+                Bạn chưa có tài khoản?{" "}
+                <Text style={styles.registerLinkText}>Đăng ký ngay</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-    paddingTop: Platform.OS === "android" ? RNStatusBar.currentHeight : 0,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  searchContainer: {
-    marginVertical: 15,
-  },
-  searchInput: {
-    width: "100%",
-    padding: 14,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    fontSize: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  categoryContainer: {
-    marginBottom: 20,
-  },
-  categoryList: {
-    paddingLeft: 4,
-  },
-  categoryItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: "#f1f3f5",
-  },
-  categoryItemSelected: {
-    backgroundColor: "#0984e3",
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#636e72",
-  },
-  categoryTextSelected: {
-    color: "#ffffff",
-    fontWeight: "bold",
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  card: {
-    flex: 1,
-    margin: 8,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  cardImage: {
-    width: "100%",
-    height: 130,
-    resizeMode: "cover",
-  },
-  cardContent: {
-    padding: 16,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2d3436",
-  },
-  cardType: {
-    fontSize: 14,
-    color: "#636e72",
-  },
-  cardPrice: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#0984e3",
-    marginTop: 4,
-  },
-});
+const createStyles = (
+  isTablet: boolean,
+  containerPadding: number,
+  logoSize: number
+) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#FAFAFA",
+    },
+    contentContainer: {
+      flexGrow: 1,
+      paddingHorizontal: containerPadding,
+      paddingTop: isTablet ? 40 : 20,
+      paddingBottom: 40,
+    },
+    headerSection: {
+      flex: 1,
+      justifyContent: "center",
+      minHeight: isTablet ? 300 : 250,
+    },
+    logoContainer: {
+      alignItems: "center",
+    },
+    logoWrapper: {
+      width: logoSize,
+      height: logoSize,
+      borderRadius: logoSize / 2,
+      backgroundColor: "#FFF8F0",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 24,
+      shadowColor: "#8B4513",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    logoText: {
+      fontSize: isTablet ? 32 : 28,
+      fontWeight: "bold",
+      color: "#8B4513",
+      marginBottom: 8,
+      fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+    },
+    subtitle: {
+      fontSize: isTablet ? 18 : 16,
+      color: "#666666",
+      textAlign: "center",
+      fontWeight: "500",
+    },
+    formSection: {
+      flex: 2,
+      justifyContent: "center",
+    },
+    formContainer: {
+      width: "100%",
+      maxWidth: isTablet ? 400 : "100%",
+      alignSelf: "center",
+    },
+    inputWrapper: {
+      marginBottom: 20,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#333333",
+      marginBottom: 8,
+      marginLeft: 4,
+    },
+    inputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      borderWidth: 1,
+      borderColor: "#E8E8E8",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    inputIcon: {
+      marginRight: 12,
+    },
+    input: {
+      flex: 1,
+      height: "100%",
+      fontSize: 16,
+      color: "#333333",
+      fontWeight: "500",
+    },
+    eyeIcon: {
+      padding: 4,
+    },
+    forgotPassword: {
+      alignSelf: "flex-end",
+      marginTop: -8,
+      marginBottom: 24,
+      padding: 4,
+    },
+    forgotPasswordText: {
+      fontSize: 14,
+      color: "#8B4513",
+      fontWeight: "600",
+    },
+    loginButton: {
+      backgroundColor: "#8B4513",
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+      marginBottom: 24,
+      shadowColor: "#8B4513",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    loginButtonText: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#FFFFFF",
+      letterSpacing: 0.5,
+    },
+    orContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginVertical: 24,
+    },
+    orLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: "#E0E0E0",
+    },
+    orText: {
+      fontSize: 12,
+      color: "#999999",
+      marginHorizontal: 16,
+      fontWeight: "600",
+      letterSpacing: 1,
+    },
+    googleButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#FFFFFF",
+      borderRadius: 16,
+      paddingVertical: 16,
+      borderWidth: 1,
+      borderColor: "#E8E8E8",
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    googleButtonText: {
+      fontSize: 16,
+      marginLeft: 12,
+      color: "#333333",
+      fontWeight: "600",
+    },
+    footer: {
+      flex: 1,
+      justifyContent: "flex-end",
+      minHeight: 60,
+    },
+    registerLink: {
+      alignItems: "center",
+      padding: 16,
+    },
+    registerText: {
+      fontSize: 14,
+      color: "#666666",
+      textAlign: "center",
+    },
+    registerLinkText: {
+      color: "#8B4513",
+      fontWeight: "bold",
+    },
+  });

@@ -1,24 +1,26 @@
+"use client";
+
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DarkTheme,
   DefaultTheme,
-  Theme,
+  type Theme,
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React from "react";
+import { useEffect, useState } from "react";
 import {
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
   useColorScheme,
   useWindowDimensions,
-  View,
 } from "react-native";
 import "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const lightTheme: Theme = {
   ...DefaultTheme,
@@ -49,6 +51,8 @@ const darkTheme: Theme = {
 export default function RootLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [isCheckingToken, setIsCheckingToken] = useState(true);
 
   const { width } = useWindowDimensions();
 
@@ -62,6 +66,41 @@ export default function RootLayout() {
   };
 
   const currentTheme = colorScheme === "dark" ? darkTheme : lightTheme;
+
+  // Check for stored token on app load
+  useEffect(() => {
+    checkUserToken();
+  }, []);
+
+  const checkUserToken = async () => {
+    try {
+      setIsCheckingToken(true);
+      const token = await AsyncStorage.getItem("userToken");
+      setUserToken(token);
+    } catch (error) {
+      console.error("Error checking token:", error);
+      setUserToken(null);
+    } finally {
+      setIsCheckingToken(false);
+    }
+  };
+
+  const ProfileButton = () => (
+    <TouchableOpacity
+      onPress={() => router.push("/profile")}
+      style={[
+        styles.profileButton,
+        { backgroundColor: currentTheme.colors.primary },
+      ]}
+      disabled={isCheckingToken}
+    >
+      <Ionicons
+        name={userToken ? "person" : "person-outline"}
+        size={20}
+        color="white"
+      />
+    </TouchableOpacity>
+  );
 
   const styles = createStyles(currentTheme, width, isTablet, getFontSize);
 
@@ -86,45 +125,9 @@ export default function RootLayout() {
             <Stack.Screen
               name="index"
               options={{
-                headerTitle: () => (
-                  <View style={styles.headerContainer}>
-                    <View style={styles.leftSection}>
-                      <Text
-                        style={[
-                          styles.headerTitleStyle,
-                          { fontSize: getFontSize(18) },
-                        ]}
-                      >
-                        Việt Coffee
-                      </Text>
-                    </View>
-                    <View style={styles.rightSection}>
-                      <TouchableOpacity
-                        onPress={() => router.push("/login")}
-                        style={[
-                          styles.loginButton,
-                          { backgroundColor: currentTheme.colors.primary },
-                        ]}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons
-                          name="person-outline"
-                          size={getFontSize(16)}
-                          color="white"
-                          style={styles.loginIcon}
-                        />
-                        <Text
-                          style={[
-                            styles.loginText,
-                            { fontSize: getFontSize(14) },
-                          ]}
-                        >
-                          Đăng nhập
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ),
+                headerTitle: "Đăng nhập",
+                headerTitleAlign: "center",
+                headerShown: true,
               }}
             />
             <Stack.Screen
@@ -154,9 +157,23 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
-              name="login"
+              name="menu"
               options={{
-                headerTitle: "Đăng nhập",
+                headerTitle: "Thực đơn",
+                headerTitleAlign: "center",
+                headerBackTitle: "Trở về",
+                presentation: Platform.OS === "ios" ? "card" : "modal",
+                headerStyle: [
+                  styles.headerStyle,
+                  { backgroundColor: currentTheme.colors.card },
+                ],
+                headerRight: () => <ProfileButton />,
+              }}
+            />
+            <Stack.Screen
+              name="register"
+              options={{
+                headerTitle: "Đăng ký",
                 headerTitleAlign: "center",
                 headerBackTitle: "Trở về",
                 presentation: Platform.OS === "ios" ? "modal" : "card",
@@ -167,12 +184,12 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
-              name="register"
+              name="profile"
               options={{
-                headerTitle: "Đăng ký",
+                headerTitle: "Thông tin cá nhân",
                 headerTitleAlign: "center",
                 headerBackTitle: "Trở về",
-                presentation: Platform.OS === "ios" ? "modal" : "card",
+                presentation: Platform.OS === "ios" ? "card" : "modal",
                 headerStyle: [
                   styles.headerStyle,
                   { backgroundColor: currentTheme.colors.card },
@@ -192,10 +209,8 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-          <StatusBar
-            style={colorScheme === "dark" ? "light" : "dark"}
-            backgroundColor={currentTheme.colors.card}
-          />
+          <Toast />
+          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
         </SafeAreaView>
       </ThemeProvider>
     </SafeAreaProvider>
@@ -215,14 +230,13 @@ const createStyles = (
     },
     headerStyle: {
       backgroundColor: theme.colors.card,
-      elevation: 4,
       shadowColor: theme.colors.text,
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
       shadowOffset: {
         width: 0,
         height: 2,
       },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.border,
     },
@@ -284,5 +298,21 @@ const createStyles = (
       color: "white",
       fontWeight: "600",
       fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+    },
+    profileButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 8,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
     },
   });

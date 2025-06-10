@@ -1,10 +1,9 @@
+import Loading from "@/components/Loading";
+import { Product } from "@/interfaces/product.interface";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   Image,
   Platform,
@@ -12,50 +11,29 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import productService from "../../service/product.service";
-
-type Items = {
-  id: string;
-  name: string;
-  category: {
-    id: string;
-    name: string;
-  };
-  price: number;
-  image: string;
-  rating: number;
-  description: string;
-};
-
-type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-  customizations?: {
-    size?: {
-      id: string;
-      name: string;
-      extraPrice: number;
-    };
-  };
-};
+import productService from "../../services/product.service";
 
 export default function DetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
-  const [dataItems, setDataItems] = useState<Items>();
+  const [dataItems, setDataItems] = useState<Product>();
   const [sizes, setSizes] = useState<any[]>([]);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedToppings, setSelectedToppings] = useState<any[]>([]);
+  const [toppings, setToppings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [note, setNote] = useState("");
+
   const fetchDetails = async () => {
     try {
       const response = await productService.getDetailsProduct(id as string);
+
       setDataItems(response);
     } catch (error) {
       console.error("Error fetching item details:", error);
@@ -66,16 +44,59 @@ export default function DetailScreen() {
     try {
       const response = await productService.getAllSizes();
       setSizes(response);
+      if (response && response.length > 0) {
+        setSelectedSize(response[0].id);
+      }
     } catch (error) {
       console.error("Error fetching sizes:", error);
     }
   };
 
+  console.log(dataItems?.category?.name);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchToppings = async () => {
+      const categoryName = dataItems?.category?.name;
+      if (categoryName && categoryName.toLowerCase() !== "cafe") {
+        try {
+          const response = await productService.getAllToppings();
+          if (isActive) {
+            setToppings(response || []);
+          }
+        } catch (error) {
+          console.error("Error fetching toppings:", error);
+          if (isActive) {
+            setToppings([]);
+          }
+        }
+      } else {
+        setToppings([]);
+      }
+    };
+
+    fetchToppings();
+
+    return () => {
+      isActive = false;
+    };
+  }, [dataItems?.category?.name]);
+
   useEffect(() => {
     if (!id) return;
-    fetchDetails();
-    fetchSize();
-  }, [id]);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([fetchDetails(), fetchSize()]);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      }
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     if (dataItems) {
@@ -86,11 +107,28 @@ export default function DetailScreen() {
           price += size.extraPrice || 0;
         }
       }
+      const toppingsPrice = selectedToppings.reduce(
+        (sum, topping) => sum + (topping.price || 0),
+        0
+      );
+      price += toppingsPrice;
       price *= quantity;
 
       setTotalPrice(price);
     }
-  }, [dataItems, selectedSize, quantity, sizes]);
+  }, [dataItems, selectedSize, selectedToppings, quantity, sizes]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Loading type="fullscreen" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!dataItems) {
     return (
@@ -134,94 +172,41 @@ export default function DetailScreen() {
 
   const addToCart = async () => {
     if (!dataItems) return;
-    const cartItem: CartItem = {
-      id: dataItems.id,
-      name: dataItems.name,
-      price:
-        dataItems.price +
-        (selectedSize
-          ? sizes.find((s) => s.id === selectedSize)?.extraPrice || 0
-          : 0),
-      image: dataItems.image,
-      quantity: quantity,
-      customizations: selectedSize
-        ? {
-            size: {
-              id: selectedSize,
-              name: sizes.find((s) => s.id === selectedSize)?.name || "",
-              extraPrice:
-                sizes.find((s) => s.id === selectedSize)?.extraPrice || 0,
-            },
-          }
-        : undefined,
+
+    const addToCartForm: any = {
+      note: note,
+      sizeId: selectedSize,
+      productId: dataItems.id,
+      customizeToppings: selectedToppings.map((topping) => ({
+        toppingId: topping.id,
+        quantity: 1,
+      })),
     };
 
     try {
-      // Use consistent storage key
-      const CART_STORAGE_KEY = "@cart_items";
-
-      // Get existing cart
-      const jsonValue = await AsyncStorage.getItem(CART_STORAGE_KEY);
-      const existingCartItems: CartItem[] =
-        jsonValue != null ? JSON.parse(jsonValue) : [];
-
-      // Check if item with same customizations already exists
-      const existingItemIndex = existingCartItems.findIndex((item) => {
-        if (item.id !== cartItem.id) return false;
-
-        // Compare customizations (only size for now)
-        const existingSizeId = item.customizations?.size?.id;
-        const newSizeId = cartItem.customizations?.size?.id;
-
-        return existingSizeId === newSizeId;
-      });
-
-      if (existingItemIndex !== -1) {
-        // Update quantity if item exists
-        existingCartItems[existingItemIndex].quantity += quantity;
-
-        Alert.alert(
-          "Đã cập nhật giỏ hàng",
-          `Đã tăng số lượng ${dataItems.name} lên ${existingCartItems[existingItemIndex].quantity}.`
-        );
-      } else {
-        // Add new item
-        existingCartItems.push(cartItem);
-
-        Alert.alert(
-          "Đã thêm vào giỏ hàng",
-          `Đã thêm ${quantity} ${dataItems.name} vào giỏ hàng.`
-        );
-      }
-
-      // Save updated cart
-      await AsyncStorage.setItem(
-        CART_STORAGE_KEY,
-        JSON.stringify(existingCartItems)
-      );
-
-      // Ask user if they want to view cart or continue shopping
-      Alert.alert("Thành công", "Bạn muốn xem giỏ hàng hay tiếp tục mua sắm?", [
-        {
-          text: "Tiếp tục mua sắm",
-          onPress: () => router.back(),
-          style: "cancel",
-        },
-        {
-          text: "Xem giỏ hàng",
-          onPress: () => router.push("/cart"),
-        },
-      ]);
-    } catch (e) {
-      console.error("Failed to save the cart item to storage", e);
-      Alert.alert(
-        "Lỗi",
-        "Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại."
-      );
+    } catch (error) {
+      console.error("Error adding to cart:", error);
     }
   };
 
-  // Update the main return statement with enhanced image and styling
+  const toggleTopping = (topping: any) => {
+    setSelectedToppings((prev) => {
+      const exists = prev.some((t) => t.id === topping.id);
+      if (exists) {
+        return prev.filter((t) => t.id !== topping.id);
+      } else {
+        return [...prev, topping];
+      }
+    });
+  };
+
+  const totalWithToppings =
+    totalPrice +
+    selectedToppings.reduce(
+      (sum, topping) => sum + topping.price * quantity,
+      0
+    );
+
   return (
     <>
       <SafeAreaView style={styles.safeArea}>
@@ -284,7 +269,7 @@ export default function DetailScreen() {
             </View>
 
             {/* Size selection */}
-            {sizes && (
+            {sizes.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Kích cỡ:</Text>
                 <View style={styles.optionsContainer}>
@@ -319,140 +304,73 @@ export default function DetailScreen() {
                     )}
                     keyExtractor={(item) => item.id}
                     horizontal
+                    showsHorizontalScrollIndicator={false}
                   />
                 </View>
               </View>
             )}
 
-            {/* Sugar level selection */}
-            {/* {item.customizationOptions?.sugarLevels && (
+            {toppings.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Mức đường:</Text>
-                <View style={styles.optionsContainer}>
-                  {item.customizationOptions.sugarLevels.map((sugar) => (
+                <Text style={styles.sectionTitle}>Topping:</Text>
+                <FlatList
+                  data={toppings}
+                  renderItem={({ item }) => (
                     <TouchableOpacity
-                      key={sugar}
                       style={[
                         styles.optionButton,
-                        selectedSugar === sugar && styles.optionButtonSelected,
-                      ]}
-                      onPress={() => setSelectedSugar(sugar)}
-                    >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          selectedSugar === sugar && styles.optionTextSelected,
-                        ]}
-                      >
-                        {sugar}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )} */}
-
-            {/* Temperature selection */}
-            {/* {item.customizationOptions?.temperature && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Nhiệt độ:</Text>
-                <View style={styles.optionsContainer}>
-                  {item.customizationOptions.temperature.map((temp) => (
-                    <TouchableOpacity
-                      key={temp}
-                      style={[
-                        styles.optionButton,
-                        selectedTemperature === temp &&
+                        selectedToppings.some((t) => t.id === item.id) &&
                           styles.optionButtonSelected,
                       ]}
-                      onPress={() => setSelectedTemperature(temp)}
+                      onPress={() => toggleTopping(item)}
                     >
                       <Text
                         style={[
                           styles.optionText,
-                          selectedTemperature === temp &&
+                          selectedToppings.some((t) => t.id === item.id) &&
                             styles.optionTextSelected,
                         ]}
                       >
-                        {temp}
+                        {item.name} +{" "}
+                        {item.price.toLocaleString("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
+                        })}
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
+                  )}
+                  keyExtractor={(item) => item.id}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                />
               </View>
-            )} */}
+            )}
 
-            {/* Milk selection */}
-            {/* {item.customizationOptions?.milk && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Sữa:</Text>
-                <View style={styles.optionsContainer}>
-                  {item.customizationOptions.milk.map((milk) => (
-                    <TouchableOpacity
-                      key={milk}
-                      style={[
-                        styles.optionButton,
-                        selectedMilk === milk && styles.optionButtonSelected,
-                      ]}
-                      onPress={() => setSelectedMilk(milk)}
-                    >
-                      <Text
-                        style={[
-                          styles.optionText,
-                          selectedMilk === milk && styles.optionTextSelected,
-                        ]}
-                      >
-                        {milk}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )} */}
-
-            {/* Add-ons selection */}
-            {/* {item.customizationOptions?.addOns &&
-              Object.keys(item.customizationOptions.addOns).length > 0 && (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Thêm:</Text>
-                  <View style={styles.optionsContainer}>
-                    {Object.entries(item.customizationOptions.addOns).map(
-                      ([addon, price]) => (
-                        <TouchableOpacity
-                          key={addon}
-                          style={[
-                            styles.optionButton,
-                            selectedAddOns.includes(addon) &&
-                              styles.optionButtonSelected,
-                          ]}
-                          onPress={() => toggleAddOn(addon)}
-                        >
-                          <Text
-                            style={[
-                              styles.optionText,
-                              selectedAddOns.includes(addon) &&
-                                styles.optionTextSelected,
-                            ]}
-                          >
-                            {addon} {price > 0 ? `(+${price}K)` : ""}
-                          </Text>
-                        </TouchableOpacity>
-                      )
-                    )}
-                  </View>
-                </View>
-              )} */}
+            {/* Note input */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Ghi chú:</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Thêm ghi chú cho món này (không bắt buộc)"
+                value={note}
+                onChangeText={setNote}
+                multiline
+                maxLength={100}
+                numberOfLines={3}
+              />
+              <Text style={styles.noteCounter}>{note.length}/100</Text>
+            </View>
           </View>
         </ScrollView>
 
         <View style={styles.footer}>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Total:</Text>
+            <Text style={styles.priceLabel}>Tổng cộng:</Text>
             <Text style={styles.price}>
-              {new Intl.NumberFormat("vi-VN", {
+              {totalWithToppings.toLocaleString("vi-VN", {
                 style: "currency",
                 currency: "VND",
-              }).format(totalPrice)}
+              })}
             </Text>
           </View>
 
@@ -566,6 +484,22 @@ const styles = StyleSheet.create({
   optionTextSelected: {
     color: "#ffffff",
     fontWeight: "bold",
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderColor: "#e1e8ed",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: "#fff",
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  noteCounter: {
+    alignSelf: "flex-end",
+    color: "#636e72",
+    fontSize: 12,
+    marginTop: 4,
   },
   quantityContainer: {
     flexDirection: "row",

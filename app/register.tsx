@@ -1,3 +1,5 @@
+import Loading from "@/components/Loading";
+import authService from "@/services/auth.service";
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -6,7 +8,9 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -15,15 +19,17 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-
+import Toast from "react-native-toast-message";
 export default function RegisterScreen() {
   const [formData, setFormData] = useState({
     username: "",
+    email: "",
     password: "",
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -36,10 +42,16 @@ export default function RegisterScreen() {
   };
 
   const validateForm = () => {
-    const { username, password, confirmPassword } = formData;
+    const { username, email, password, confirmPassword } = formData;
 
-    if (!username.trim() || username.length < 3) {
-      Alert.alert("Lỗi", "Tên đăng nhập phải có ít nhất 3 ký tự.");
+    if (!username.trim() || username.length < 6) {
+      Alert.alert("Lỗi", "Tên đăng nhập phải có ít nhất 6 ký tự.");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email)) {
+      Alert.alert("Lỗi", "Email khó hợp lệ.");
       return false;
     }
 
@@ -56,20 +68,38 @@ export default function RegisterScreen() {
     return true;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validateForm()) return;
-
-    // For demo purposes only - in a real app, you would call your registration service
-    Alert.alert(
-      "Đăng ký thành công",
-      "Tài khoản của bạn đã được tạo thành công!",
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("/"),
-        },
-      ]
+    setLoading(true);
+    const response: any = await authService.register(
+      formData.username,
+      formData.email,
+      formData.password
     );
+    if (response.status === 200) {
+      Toast.show({
+        type: "success",
+        text1: "Đăng ký thành công!",
+        text2: "Bạn đã tạo tài khoản thành công.",
+        position: "top",
+        visibilityTime: 3000,
+      });
+      setLoading(false);
+      setFormData({
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+      router.replace("/menu");
+    } else {
+      setLoading(false);
+      Toast.show({
+        type: "error",
+        text1: "Đăng ký thất bại!",
+        text2: response?.message || "Vui lòng thử lại sau.",
+      });
+    }
   };
 
   const getPasswordStrength = (password: string) => {
@@ -86,6 +116,16 @@ export default function RegisterScreen() {
 
   const passwordStrength = getPasswordStrength(formData.password);
   const styles = createStyles(isTablet, containerPadding, logoSize);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Loading type="fullscreen" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -146,6 +186,29 @@ export default function RegisterScreen() {
                     onChangeText={(text) => updateFormData("username", text)}
                     autoCapitalize="none"
                     autoComplete="username"
+                    placeholderTextColor="#A0A0A0"
+                  />
+                </View>
+              </View>
+
+              {/* Email Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Email *</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color="#8B4513"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nhập email của bạn"
+                    value={formData.email}
+                    onChangeText={(text) => updateFormData("email", text)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
                     placeholderTextColor="#A0A0A0"
                   />
                 </View>
@@ -335,6 +398,11 @@ const createStyles = (
   logoSize: number
 ) =>
   StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: "#f8f9fa",
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    },
     container: {
       flex: 1,
       backgroundColor: "#FAFAFA",
