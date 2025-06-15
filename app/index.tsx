@@ -1,42 +1,74 @@
+import Loading from "@/components/Loading";
 import authService from "@/services/auth.service";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import React, { useEffect, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
   useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+
+interface JwtPayload {
+  exp: number;
+  iat: number;
+  sub: string;
+}
 
 export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
   const isTablet = width >= 768;
   const containerPadding = isTablet ? 40 : 24;
-  const logoSize = isTablet ? 120 : 100;
+  const logoSize = isTablet ? 180 : 150;
 
   useEffect(() => {
     const checkToken = async () => {
-      const token = await AsyncStorage.getItem("userToken");
-      if (token) {
-        router.replace("/menu");
+      try {
+        const token = await AsyncStorage.getItem("userToken");
+        if (token) {
+          try {
+            const decoded = jwtDecode<JwtPayload>(token);
+            const currentTime = Date.now() / 1000;
+
+            if (decoded.exp > currentTime) {
+              router.replace("/(tabs)/home");
+            } else {
+              await AsyncStorage.removeItem("userToken");
+              Toast.show({
+                type: "info",
+                text1: "Phiên đăng nhập đã hết hạn",
+                text2: "Vui lòng đăng nhập lại",
+              });
+            }
+          } catch (decodeError) {
+            console.error("Invalid token format:", decodeError);
+            await AsyncStorage.removeItem("userToken");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
       }
     };
+
     checkToken();
   }, []);
 
@@ -50,24 +82,6 @@ export default function LoginScreen() {
       return;
     }
 
-    if (!email.trim()) {
-      Toast.show({
-        type: "error",
-        text1: "Vui lòng nhập email.",
-        text2: "Email không được để trống.",
-      });
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      Toast.show({
-        type: "error",
-        text1: "Vui lòng nhập email hợp lệ.",
-        text2: "Email không đúng định dạng.",
-      });
-      return;
-    }
-
     if (password.length < 6) {
       Toast.show({
         type: "error",
@@ -76,8 +90,8 @@ export default function LoginScreen() {
       });
       return;
     }
-
-    const response: any = await authService.login(username, email, password);
+    setLoading(true);
+    const response: any = await authService.login(username, password);
     if (response.status !== 200) {
       Toast.show({
         type: "error",
@@ -86,6 +100,7 @@ export default function LoginScreen() {
         }`,
         text2: "Vui lòng thử lại sau.",
       });
+      setLoading(false);
       return;
     } else {
       await AsyncStorage.setItem("userToken", response.data.data.accessToken);
@@ -94,7 +109,9 @@ export default function LoginScreen() {
         text1: "Đăng nhập thành công!",
         text2: "Chào mừng bạn trở lại!",
       });
-      router.replace("/menu");
+
+      setLoading(false);
+      router.replace("/(tabs)/home");
     }
   };
 
@@ -104,27 +121,22 @@ export default function LoginScreen() {
 
   const styles = createStyles(isTablet, containerPadding, logoSize);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Loading type="fullscreen" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
     >
-      <Stack.Screen
-        options={{
-          title: "Đăng nhập",
-          headerShown: true,
-          headerBackVisible: true,
-          headerTitleStyle: {
-            fontWeight: "bold",
-            fontSize: isTablet ? 20 : 18,
-          },
-          headerStyle: {
-            backgroundColor: "#FFFFFF",
-          },
-        }}
-      />
-
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <Pressable onPress={Keyboard.dismiss}>
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
@@ -161,28 +173,6 @@ export default function LoginScreen() {
                     onChangeText={setUsername}
                     autoCapitalize="none"
                     autoComplete="username"
-                    placeholderTextColor="#A0A0A0"
-                  />
-                </View>
-              </View>
-
-              {/* Email Input */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Email</Text>
-                <View style={styles.inputContainer}>
-                  <Ionicons
-                    name="mail-outline"
-                    size={20}
-                    color="#8B4513"
-                    style={styles.inputIcon}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nhập email"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    autoComplete="email"
                     placeholderTextColor="#A0A0A0"
                   />
                 </View>
@@ -268,7 +258,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </TouchableWithoutFeedback>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
@@ -279,8 +269,13 @@ const createStyles = (
   logoSize: number
 ) =>
   StyleSheet.create({
-    container: {
+    safeArea: {
       flex: 1,
+      backgroundColor: "#f8f9fa",
+      paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    },
+    container: {
+      minHeight: "100%",
       backgroundColor: "#FAFAFA",
     },
     contentContainer: {

@@ -1,14 +1,10 @@
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DarkTheme, DefaultTheme, Theme } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  Image,
   Platform,
   StyleSheet,
-  TouchableOpacity,
   useColorScheme,
   useWindowDimensions,
 } from "react-native";
@@ -52,17 +48,12 @@ interface User {
 
 export default function RootLayout() {
   // Hooks
-  const router = useRouter();
-  const segments = useSegments();
   const colorScheme = useColorScheme();
   const { width } = useWindowDimensions();
 
-  // State
-  const [userToken, setUserToken] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [isCheckingToken, setIsCheckingToken] = useState(true);
-
   // Responsive constants
+  const isPhone = width < 768;
+  const isLargePhone = width >= 375 && width < 768;
   const isTablet = width >= 768;
   const isLargeScreen = width >= 1024;
   const theme = colorScheme === "dark" ? darkTheme : lightTheme;
@@ -70,11 +61,13 @@ export default function RootLayout() {
   // Font size utility
   const getFontSize = useCallback(
     (base: number) => {
+      if (isPhone) return base + 1;
+      if (isLargePhone) return base + 2;
       if (isLargeScreen) return base + 4;
       if (isTablet) return base + 2;
       return base;
     },
-    [isLargeScreen, isTablet]
+    [isLargeScreen, isTablet, isLargePhone, isPhone]
   );
 
   // Styles
@@ -83,96 +76,48 @@ export default function RootLayout() {
     [theme, width, isTablet, getFontSize]
   );
 
-  // Check token and redirect if needed
-  const checkUserToken = useCallback(async () => {
-    try {
-      setIsCheckingToken(true);
-      const token = await AsyncStorage.getItem("userToken");
-      setUserToken(token);
+  // // Check token and redirect if needed
+  // const checkUserToken = useCallback(async () => {
+  //   try {
+  //     setIsCheckingToken(true);
+  //     const token = await AsyncStorage.getItem("userToken");
+  //     setUserToken(token);
 
-      if (token) {
-        const userData = await AsyncStorage.getItem("user");
-        if (userData) {
-          try {
-            setUser(JSON.parse(userData));
-          } catch (parseError) {
-            console.error("Error parsing user data:", parseError);
-            setUser(null);
-          }
-        }
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Error checking token:", error);
-      setUserToken(null);
-      setUser(null);
-    } finally {
-      setIsCheckingToken(false);
-    }
-  }, []);
+  //     if (token) {
+  //       const userData = await AsyncStorage.getItem("user");
+  //       if (userData) {
+  //         try {
+  //           setUser(JSON.parse(userData));
+  //         } catch (parseError) {
+  //           console.error("Error parsing user data:", parseError);
+  //           setUser(null);
+  //         }
+  //       }
+  //     } else {
+  //       setUser(null);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error checking token:", error);
+  //     setUserToken(null);
+  //     setUser(null);
+  //   } finally {
+  //     setIsCheckingToken(false);
+  //   }
+  // }, []);
 
   // Authentication and navigation control
-  useEffect(() => {
-    checkUserToken().then(() => {
-      const inAuthGroup = ["index", "register"].includes(segments[0] as string);
-      const inTabsGroup = segments[0] === "(tabs)";
+  // useEffect(() => {
+  //   checkUserToken().then(() => {
+  //     const inAuthGroup = ["index", "register"].includes(segments[0] as string);
+  //     const inTabsGroup = segments[0] === "(tabs)";
 
-      if (!userToken && !inAuthGroup && !isCheckingToken) {
-        router.replace("/");
-      } else if (userToken && inAuthGroup && !isCheckingToken) {
-        router.replace("/(tabs)/menu");
-      }
-    });
-  }, [userToken, segments, isCheckingToken, router, checkUserToken]);
-
-  // Profile Button Component
-  const ProfileButton = useCallback(() => {
-    // Don't show profile button in tab layout - it has its own tab
-    const inTabsGroup = segments[0] === "(tabs)";
-    if (inTabsGroup) return null;
-
-    const handleProfilePress = () => {
-      if (userToken) {
-        router.push("/(tabs)/profile");
-      } else {
-        router.push("/");
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        onPress={handleProfilePress}
-        style={[
-          styles.profileButton,
-          { backgroundColor: theme.colors.primary },
-        ]}
-        disabled={isCheckingToken}
-      >
-        {user?.avatarUrl ? (
-          <Image
-            source={{ uri: user.avatarUrl }}
-            style={styles.avatarImage}
-            defaultSource={require("../assets/images/default-avatar.png")}
-          />
-        ) : (
-          <Ionicons
-            name={userToken ? "person" : "person-outline"}
-            size={20}
-            color="white"
-          />
-        )}
-      </TouchableOpacity>
-    );
-  }, [
-    user,
-    userToken,
-    isCheckingToken,
-    segments,
-    router,
-    styles,
-    theme.colors.primary,
-  ]);
+  //     if (!userToken && !inAuthGroup && !isCheckingToken) {
+  //       router.replace("/");
+  //     } else if (userToken && inAuthGroup && !isCheckingToken) {
+  //       router.replace("/(tabs)/menu");
+  //     }
+  //   });
+  // }, [userToken, segments, isCheckingToken, router, checkUserToken]);
 
   // Main Layout Render
   return (
@@ -190,16 +135,13 @@ export default function RootLayout() {
               backgroundColor: theme.colors.background,
               paddingHorizontal: isTablet ? 20 : 0,
             },
-            headerRight: () => <ProfileButton />,
             headerTitleAlign: "center",
           }}
         >
-          {/* Auth Screens */}
           <Stack.Screen
             name="index"
             options={{
-              headerTitle: "Đăng nhập",
-              headerRight: () => null,
+              headerShown: false,
             }}
           />
           <Stack.Screen

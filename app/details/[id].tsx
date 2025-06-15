@@ -1,5 +1,6 @@
 import Loading from "@/components/Loading";
 import { Product } from "@/interfaces/product.interface";
+import cartService from "@/services/cart.service";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -175,13 +176,21 @@ export default function DetailScreen() {
       note: note,
       sizeId: selectedSize,
       productId: dataItems.id,
+      quantity: quantity,
       customizeToppings: selectedToppings.map((topping) => ({
         toppingId: topping.id,
         quantity: 1,
       })),
     };
+    console.log("addToCartForm", addToCartForm);
 
     try {
+      const response = await cartService.addToCart(addToCartForm);
+      if (response) {
+        router.push("/cart");
+      } else {
+        console.error("Failed to add item to cart");
+      }
     } catch (error) {
       console.error("Error adding to cart:", error);
     }

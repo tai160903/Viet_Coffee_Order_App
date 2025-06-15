@@ -4,10 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -15,7 +15,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -45,23 +44,44 @@ export default function RegisterScreen() {
     const { username, email, password, confirmPassword } = formData;
 
     if (!username.trim() || username.length < 6) {
-      Alert.alert("Lỗi", "Tên đăng nhập phải có ít nhất 6 ký tự.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Tên đăng nhập phải có ít nhất 6 ký tự.",
+        position: "top",
+      });
+
       return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !emailRegex.test(email)) {
-      Alert.alert("Lỗi", "Email khó hợp lệ.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Email không hợp lệ. Vui lòng nhập email đúng định dạng.",
+        position: "top",
+      });
       return false;
     }
 
     if (password.length < 6) {
-      Alert.alert("Lỗi", "Mật khẩu phải có ít nhất 6 ký tự.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Mật khẩu phải có ít nhất 6 ký tự.",
+        position: "top",
+      });
       return false;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Lỗi", "Mật khẩu xác nhận không khớp.");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Mật khẩu xác nhận không khớp. Vui lòng kiểm tra lại.",
+        position: "top",
+      });
       return false;
     }
 
@@ -91,7 +111,7 @@ export default function RegisterScreen() {
         password: "",
         confirmPassword: "",
       });
-      router.replace("/menu");
+      router.replace("/");
     } else {
       setLoading(false);
       Toast.show({
@@ -147,7 +167,7 @@ export default function RegisterScreen() {
         }}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <Pressable onPress={Keyboard.dismiss}>
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.contentContainer}
@@ -387,7 +407,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </TouchableWithoutFeedback>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
@@ -399,12 +419,10 @@ const createStyles = (
 ) =>
   StyleSheet.create({
     safeArea: {
-      flex: 1,
       backgroundColor: "#f8f9fa",
       paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
     },
     container: {
-      flex: 1,
       backgroundColor: "#FAFAFA",
     },
     contentContainer: {

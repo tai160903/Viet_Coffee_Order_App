@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Viet_Coffee_Order_App",
+    "name": "Viet Coffee",
     "slug": "Viet_Coffee_Order_App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/viet-coffee.png",
     "scheme": "vietcoffeeorderapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

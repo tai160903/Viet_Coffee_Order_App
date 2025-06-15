@@ -1,7 +1,7 @@
 import Loading from "@/components/Loading";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import productService from "../../services/product.service";
+import { Entypo, MaterialCommunityIcons } from "@expo/vector-icons";
 
 type MenuItem = {
   id: string;
@@ -30,21 +31,22 @@ type MenuItem = {
   description: string;
 };
 
-export default function HomeScreen() {
+export default function MenuScreen() {
   const { width } = useWindowDimensions();
   const [searchQuery, setSearchQuery] = useState("");
   const [dataItems, setDataItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [loading, setLoading] = useState(true);
+  const [isGridView, setIsGridView] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const numColumns = width >= 768 ? 3 : 2;
+  const numColumns = width >= 768 ? 4 : 3;
   const cardWidth = (width - (numColumns + 1) * 16) / numColumns;
 
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(
       new Set(dataItems.map((item) => item.category?.name || ""))
     ).filter(Boolean);
-
     return ["All", ...uniqueCategories];
   }, [dataItems]);
 
@@ -55,11 +57,10 @@ export default function HomeScreen() {
       setDataItems(response);
       setLoading(false);
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Error fetching menu data:", error.message);
-      } else {
-        console.error("Error fetching menu data:", error);
-      }
+      console.error(
+        "Error fetching menu data:",
+        error instanceof Error ? error.message : error
+      );
       setLoading(false);
     }
   };
@@ -67,6 +68,17 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchMenu();
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchMenu()
+      .then(() => setRefreshing(false))
+      .catch((error) => {
+        console.error("Error refreshing data:", error);
+        setRefreshing(false);
+      });
+  }, []);
+
   const filteredItems = dataItems.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
@@ -76,7 +88,31 @@ export default function HomeScreen() {
     return matchesSearch && matchesCategory;
   });
 
-  const renderMenu = ({ item }: { item: MenuItem }) => {
+  const formatDataWithEmptyItems = (data: any, numColumns: number) => {
+    const numberOfFullRows = Math.floor(data.length / numColumns);
+    let numberOfElementsLastRow = data.length - numberOfFullRows * numColumns;
+    if (numberOfElementsLastRow === 0) {
+      return data;
+    }
+    const formattedData = [...data];
+    while (
+      numberOfElementsLastRow !== 0 &&
+      numberOfElementsLastRow !== numColumns
+    ) {
+      formattedData.push({
+        id: `empty-${numberOfElementsLastRow}`,
+        empty: true,
+      });
+      numberOfElementsLastRow++;
+    }
+    return formattedData;
+  };
+
+  const renderMenu = ({ item }: { item: any }) => {
+    if (item.empty) {
+      return <View style={[styles.itemContainer, styles.invisibleItem]} />;
+    }
+
     const cardPadding = width >= 768 ? 12 : 8;
 
     return (
@@ -84,9 +120,9 @@ export default function HomeScreen() {
         style={[
           styles.card,
           {
+            flexDirection: isGridView ? "column" : "row",
             margin: cardPadding,
-            width: cardWidth,
-            maxWidth: `${100 / numColumns - 4}%`,
+            width: isGridView ? cardWidth : "100%",
           },
         ]}
         onPress={() =>
@@ -96,7 +132,17 @@ export default function HomeScreen() {
           })
         }
       >
-        <Image source={{ uri: item.image }} style={styles.cardImage} />
+        <Image
+          source={{ uri: item.image }}
+          style={[
+            styles.cardImage,
+            {
+              width: isGridView ? "100%" : 100,
+              height: 100,
+              borderRadius: 8,
+            },
+          ]}
+        />
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.name}</Text>
           <Text style={styles.cardType}>{item.category.name}</Text>
@@ -119,6 +165,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Search */}
         <View style={styles.searchContainer}>
           <TextInput
             placeholder="Tìm đồ uống yêu thích..."
@@ -129,48 +176,64 @@ export default function HomeScreen() {
           />
         </View>
 
-        <View style={styles.categoryContainer}>
-          <FlatList
-            horizontal
-            data={categories}
-            keyExtractor={(item) => item}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  selectedCategory === item && styles.categoryItemSelected,
-                ]}
-                onPress={() => setSelectedCategory(item)}
-              >
-                <Text
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <View style={styles.categoryContainer}>
+            <FlatList
+              horizontal
+              data={categories}
+              keyExtractor={(item) => item}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
                   style={[
-                    styles.categoryText,
-                    selectedCategory === item && styles.categoryTextSelected,
+                    styles.categoryItem,
+                    selectedCategory === item && styles.categoryItemSelected,
                   ]}
+                  onPress={() => setSelectedCategory(item)}
                 >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.categoryList}
-          />
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === item && styles.categoryTextSelected,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.categoryList}
+            />
+          </View>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity onPress={() => setIsGridView(!isGridView)}>
+              <Text style={styles.toggleText}>
+                {isGridView ? (
+                  <MaterialCommunityIcons
+                    name="format-list-bulleted-square"
+                    size={24}
+                    color="#0984e3"
+                  />
+                ) : (
+                  <Entypo name="grid" size={24} color="#0984e3" />
+                )}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Menu List */}
         <FlatList
-          data={filteredItems}
+          data={formatDataWithEmptyItems(filteredItems, numColumns)}
           renderItem={renderMenu}
-          numColumns={numColumns}
-          key={`column-${numColumns}`}
+          key={`layout-${isGridView ? "grid" : "list"}`}
+          numColumns={isGridView ? numColumns : 1}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={[
             styles.listContainer,
             { paddingHorizontal: width >= 768 ? 12 : 8 },
           ]}
+          columnWrapperStyle={isGridView ? styles.columnWrapper : undefined}
           showsVerticalScrollIndicator={false}
-          columnWrapperStyle={
-            numColumns > 1 ? { justifyContent: "flex-start" } : undefined
-          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
@@ -180,6 +243,8 @@ export default function HomeScreen() {
               </Text>
             </View>
           }
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
         />
       </View>
     </SafeAreaView>
@@ -213,6 +278,7 @@ const styles = StyleSheet.create({
   },
   categoryContainer: {
     marginBottom: 20,
+    flexGrow: 1,
   },
   categoryList: {
     paddingLeft: 4,
@@ -289,5 +355,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#636e72",
     textAlign: "center",
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 10,
+  },
+  toggleText: {
+    fontSize: 14,
+    color: "#0984e3",
+    fontWeight: "500",
+  },
+  row: {
+    justifyContent: "flex-start",
+    paddingHorizontal: 8,
+  },
+  itemContainer: {
+    flex: 1,
+    margin: 8,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  invisibleItem: {
+    backgroundColor: "transparent",
+    elevation: 0,
+    shadowOpacity: 0,
   },
 });
