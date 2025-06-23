@@ -6,7 +6,7 @@ const orderService = {
     try {
       const token = await AsyncStorage.getItem("userToken");
       const response = await axios.get(
-        `${process.env.EXPO_PUBLIC_API_URL}/Order/get-order-of-customer`,
+        `${process.env.EXPO_PUBLIC_API_URL}/Order/get-orders-of-customer`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -14,7 +14,6 @@ const orderService = {
           },
         }
       );
-      console.log("Customer orders fetched successfully:", response.data.data);
       return response?.data?.data;
     } catch (error: any) {
       console.error("Error fetching customer orders:", error.message);

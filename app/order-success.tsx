@@ -1,10 +1,10 @@
+import { formatCurrency } from "@/utils/formatCurrency";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,36 +13,21 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
-interface OrderDetails {
-  id: string;
-  orderCode: string;
-  status: string;
-  pickupTime?: string;
-  deliveryAddress?: string;
-  totalAmount: number;
-  paymentMethod: string;
-  items: {
-    name: string;
-    quantity: number;
-    price: number;
-  }[];
-}
-
 export default function OrderSuccessScreen() {
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<any | null>(null);
-  const params = useLocalSearchParams();
-  const { orderId } = params;
+  // const params = useLocalSearchParams();
+  // const { orderId } = params;
 
   useEffect(() => {
     const getOrderDetails = async () => {
       try {
         setLoading(true);
-        // Try to get order from AsyncStorage using the orderId from params
         const orderData = await AsyncStorage.getItem(`order`);
         console.log("Fetching order details for orderId:", orderData);
         if (orderData) {
           setOrder(JSON.parse(orderData));
+          await AsyncStorage.removeItem("order");
         } else {
           console.error("Order data not found in AsyncStorage");
         }
@@ -57,13 +42,6 @@ export default function OrderSuccessScreen() {
   }, []);
 
   console.log("Order details:", order);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -131,7 +109,7 @@ export default function OrderSuccessScreen() {
         <Text style={styles.cardTitle}>Thông tin đơn hàng</Text>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Mã đơn hàng:</Text>
-          <Text style={styles.infoValue}>{order.orderCode}</Text>
+          <Text style={styles.infoValue}>{order.code}</Text>
         </View>
 
         <View>
@@ -166,7 +144,7 @@ export default function OrderSuccessScreen() {
         {order.pickupTime ? (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Thời gian nhận:</Text>
-            <Text style={styles.infoValue}>{order.pickupTime}</Text>
+            <Text style={styles.infoValue}>{order?.pickupTime || ""}</Text>
           </View>
         ) : null}
 
@@ -179,7 +157,7 @@ export default function OrderSuccessScreen() {
 
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Phương thức thanh toán:</Text>
-          <Text style={styles.infoValue}>{order.paymentMethod}</Text>
+          <Text style={styles.infoValue}>{order.payment}</Text>
         </View>
 
         <View style={styles.infoRow}>
@@ -197,7 +175,7 @@ export default function OrderSuccessScreen() {
         </Text>
         <View style={styles.qrCode}>
           <QRCode
-            value={`VIETCOFFEE:ORDER:${order.orderCode}`}
+            value={`VIETCOFFEE:ORDER:${order.qRcode}`}
             size={200}
             color="#2C3E50"
             backgroundColor="#FFFFFF"

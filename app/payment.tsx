@@ -408,7 +408,8 @@ export default function PaymentScreen() {
           if (response.status !== 200) {
             throw new Error("Thanh toán bằng tiền mặt không thành công");
           }
-          router.push("/order-success");
+          Alert.alert("Thành công", "Đặt hàng thành công!");
+          router.push("/");
           break;
         case "cash_wallet":
           const walletResponse = await paymentService.payWithWallet(order);

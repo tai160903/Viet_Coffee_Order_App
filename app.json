@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/viet-coffee.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -50,6 +50,12 @@
         "projectId": "e82b0823-b154-47f9-95dc-6e74cc8a5cb0"
       }
     },
-    "owner": "tai16092003"
+    "owner": "tai16092003",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e82b0823-b154-47f9-95dc-6e74cc8a5cb0"
+    }
   }
 }

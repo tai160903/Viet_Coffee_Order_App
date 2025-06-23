@@ -19,17 +19,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  joinDate: string;
-}
-
 export default function ProfileScreen() {
   const router = useRouter();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     loadUserProfile();
@@ -50,6 +42,8 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   };
+
+  console.log("userProfile", userProfile);
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
       {
@@ -102,21 +96,21 @@ export default function ProfileScreen() {
                 style={styles.infoIcon}
               />
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{userProfile?.email}</Text>
+              <Text style={styles.infoValue}>
+                {userProfile?.email || "N/A"}
+              </Text>
             </View>
 
-            {userProfile?.phone && (
-              <View style={styles.infoRow}>
-                <Ionicons
-                  name="call-outline"
-                  size={20}
-                  color={"#333"}
-                  style={styles.infoIcon}
-                />
-                <Text style={styles.infoLabel}>Số điện thoại</Text>
-                <Text style={styles.infoValue}>{userProfile?.phone}</Text>
-              </View>
-            )}
+            <View style={styles.infoRow}>
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={"#333"}
+                style={styles.infoIcon}
+              />
+              <Text style={styles.infoLabel}>Số điện thoại</Text>
+              <Text style={styles.infoValue}>{userProfile?.phone}</Text>
+            </View>
 
             <View style={styles.infoRow}>
               <Ionicons

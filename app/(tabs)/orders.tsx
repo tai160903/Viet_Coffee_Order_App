@@ -2,7 +2,6 @@ import orderService from "@/services/order.service";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -42,6 +41,7 @@ const statusColors = {
   processing: "#3B82F6", // Blue
   completed: "#10B981", // Green
   cancelled: "#EF4444", // Red
+  new: "#8B4513", // Brown
 };
 
 const statusMessages = {
@@ -52,18 +52,20 @@ const statusMessages = {
 };
 
 export default function OrdersScreen() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   // Fetch orders from API
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const userToken = await AsyncStorage.getItem("userToken");
-      const userDataStr = await AsyncStorage.getItem("userData");
-      const userData = userDataStr ? JSON.parse(userDataStr) : null;
       if (!userToken) {
         Alert.alert("Thông báo", "Vui lòng đăng nhập để xem đơn hàng");
         router.replace("/");
@@ -71,12 +73,13 @@ export default function OrdersScreen() {
       }
 
       const response = await orderService.getCustomerOrders();
-      setOrders(generateSampleOrders());
-
-      setOrders(response.data.data || []);
+      setOrders(response);
+      if (!response || response.length === 0) {
+        setOrders(generateSampleOrders());
+      }
+      console.log("Fetched orders:", response);
     } catch (error) {
       console.error("Error fetching orders:", error);
-      // For development: use sample data if API fails
       setOrders(generateSampleOrders());
     } finally {
       setLoading(false);
@@ -84,23 +87,15 @@ export default function OrdersScreen() {
     }
   };
 
-  // Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchOrders();
   };
 
-  // Initial load
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
   // Format date to Vietnamese format
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-
-      // Check if date is valid before formatting
       if (isNaN(date.getTime())) {
         return "Ngày không hợp lệ";
       }
@@ -208,12 +203,11 @@ export default function OrdersScreen() {
   };
 
   // Render an order card
-  const renderOrder = ({ item }: { item: Order }) => {
+  const renderOrder = ({ item }: { item: any }) => {
     return (
       <TouchableOpacity
         style={styles.orderCard}
         onPress={() => {
-          // Navigate to order details when implemented
           // router.push(`/order/${item.id}`);
           Alert.alert("Chi tiết đơn hàng", `Đơn hàng #${item.orderNumber}`);
         }}
@@ -221,15 +215,24 @@ export default function OrdersScreen() {
         <View style={styles.orderHeader}>
           <View style={styles.orderNumberContainer}>
             <Text style={styles.orderNumberLabel}>Đơn hàng</Text>
-            <Text style={styles.orderNumber}>#{item.orderNumber}</Text>
+            <Text style={styles.orderNumber}>#{item.code || "VC-00000"}</Text>
           </View>
           <View
             style={[
               styles.statusBadge,
-              { backgroundColor: statusColors[item.status] },
+              {
+                backgroundColor:
+                  statusColors[
+                    item?.status?.toLowerCase() as keyof typeof statusColors
+                  ],
+              },
             ]}
           >
-            <Text style={styles.statusText}>{statusMessages[item.status]}</Text>
+            <Text style={styles.statusText}>
+              {statusMessages[
+                item?.status?.toLowerCase() as keyof typeof statusMessages
+              ] || "Mới"}
+            </Text>
           </View>
         </View>
 
@@ -241,11 +244,11 @@ export default function OrdersScreen() {
         <View style={styles.divider} />
 
         <View style={styles.itemsContainer}>
-          {item?.items?.slice(0, 2).map((orderItem) => (
+          {item?.orderItems?.map((orderItem: any) => (
             <View key={orderItem.id} style={styles.orderItem}>
-              {orderItem.image ? (
+              {orderItem.imageProduct ? (
                 <Image
-                  source={{ uri: orderItem?.image }}
+                  source={{ uri: orderItem?.imageProduct }}
                   style={styles.itemImage}
                 />
               ) : (
@@ -260,7 +263,7 @@ export default function OrdersScreen() {
               </View>
 
               <Text style={styles.itemPrice}>
-                {formatCurrency(orderItem.price * orderItem.quantity)}
+                {formatCurrency(orderItem.unitPrice * orderItem.quantity)}
               </Text>
             </View>
           ))}
@@ -276,7 +279,9 @@ export default function OrdersScreen() {
 
         <View style={styles.orderFooter}>
           <Text style={styles.totalLabel}>Tổng tiền:</Text>
-          <Text style={styles.totalAmount}>{formatCurrency(item.total)}</Text>
+          <Text style={styles.totalAmount}>
+            {formatCurrency(item?.finalPrice)}
+          </Text>
         </View>
       </TouchableOpacity>
     );
