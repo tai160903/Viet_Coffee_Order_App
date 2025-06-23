@@ -1,3 +1,4 @@
+import orderService from "@/services/order.service";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -60,29 +61,17 @@ export default function OrdersScreen() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-
-      // Get user token
       const userToken = await AsyncStorage.getItem("userToken");
-
+      const userDataStr = await AsyncStorage.getItem("userData");
+      const userData = userDataStr ? JSON.parse(userDataStr) : null;
       if (!userToken) {
-        // If no token, redirect to login
         Alert.alert("Thông báo", "Vui lòng đăng nhập để xem đơn hàng");
         router.replace("/");
         return;
       }
 
-      // Get orders from your API
-      const response = await axios.get(
-        `${process.env.EXPO_PUBLIC_API_URL}/orders`,
-        {
-          headers: {
-            Authorization: `Bearer ${userToken}`,
-          },
-        }
-      );
-
-      // If you get test data instead of real API:
-      // setOrders(generateSampleOrders());
+      const response = await orderService.getCustomerOrders();
+      setOrders(generateSampleOrders());
 
       setOrders(response.data.data || []);
     } catch (error) {
@@ -108,23 +97,39 @@ export default function OrdersScreen() {
 
   // Format date to Vietnamese format
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+
+      // Check if date is valid before formatting
+      if (isNaN(date.getTime())) {
+        return "Ngày không hợp lệ";
+      }
+
+      return new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Ngày không hợp lệ";
+    }
   };
 
   // Generate sample orders for development
   const generateSampleOrders = (): Order[] => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+
     return [
       {
         id: "1",
         orderNumber: "VC-001235",
-        createdAt: new Date().toISOString(),
+        createdAt: now.toISOString(),
         items: [
           {
             id: "101",
@@ -147,7 +152,7 @@ export default function OrdersScreen() {
       {
         id: "2",
         orderNumber: "VC-001236",
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: oneDayAgo.toISOString(),
         items: [
           {
             id: "103",
@@ -163,7 +168,7 @@ export default function OrdersScreen() {
       {
         id: "3",
         orderNumber: "VC-001237",
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: twoDaysAgo.toISOString(),
         items: [
           {
             id: "104",
@@ -186,7 +191,7 @@ export default function OrdersScreen() {
       {
         id: "4",
         orderNumber: "VC-001238",
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: fiveDaysAgo.toISOString(),
         items: [
           {
             id: "106",
@@ -236,7 +241,7 @@ export default function OrdersScreen() {
         <View style={styles.divider} />
 
         <View style={styles.itemsContainer}>
-          {item.items.slice(0, 2).map((orderItem) => (
+          {item?.items?.slice(0, 2).map((orderItem) => (
             <View key={orderItem.id} style={styles.orderItem}>
               {orderItem.image ? (
                 <Image
@@ -260,9 +265,9 @@ export default function OrdersScreen() {
             </View>
           ))}
 
-          {item.items.length > 2 && (
+          {item?.items?.length > 2 && (
             <Text style={styles.moreItems}>
-              +{item.items.length - 2} sản phẩm khác
+              +{item?.items?.length - 2} sản phẩm khác
             </Text>
           )}
         </View>

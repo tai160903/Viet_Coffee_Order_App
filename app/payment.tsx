@@ -1,5 +1,6 @@
 "use client";
 
+import { paymentService } from "@/services/payment.service";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -270,7 +271,6 @@ export default function PaymentScreen() {
       try {
         setIsLoading(true);
         const cartData = await AsyncStorage.getItem("cart");
-        console.log("Loading cart data:", cartData);
 
         if (cartData) {
           const parsedCart = JSON.parse(cartData);
@@ -386,69 +386,50 @@ export default function PaymentScreen() {
 
       // Create order object
       const order = {
-        items: cartItems,
-        subtotal,
-        deliveryFee,
-        discount: promoDiscount,
-        total,
-        paymentMethod: selectedPayment,
-        orderType,
-        deliveryAddress: orderType === "delivery" ? deliveryAddress : null,
-        pickupDateTime:
-          orderType === "pickup" ? pickupDateTime.toISOString() : null,
-        orderDate: new Date().toISOString(),
-        status: "pending",
-        orderNumber: `VC-${Math.floor(100000 + Math.random() * 900000)}`, // Generate random order number
+        fullName: deliveryAddress.fullName,
+        phoneNumber: deliveryAddress.phone,
+        address: deliveryAddress.address,
       };
 
-      // In a real app, send this to your backend
-      console.log("Order placed:", order);
+      switch (selectedPayment) {
+        case "cash":
+          const response = await paymentService.payWithCash(order);
+          console.log("Cash payment response:", response.data);
+          AsyncStorage.removeItem("cart");
+          const existingOrderHistory = await AsyncStorage.getItem("order");
+          if (existingOrderHistory) {
+            await AsyncStorage.removeItem("order");
+          }
+          await AsyncStorage.setItem(
+            "order",
+            JSON.stringify(response.data.data)
+          );
 
-      // Save order to local storage history
-      const ordersHistory = await AsyncStorage.getItem("orders");
-      const orders = ordersHistory ? JSON.parse(ordersHistory) : [];
-      orders.unshift(order); // Add new order at the beginning
-      await AsyncStorage.setItem("orders", JSON.stringify(orders));
-
-      // Clear the cart
-      await AsyncStorage.setItem("cart", JSON.stringify({ items: [] }));
-
-      // Show success message
-      setTimeout(() => {
-        setIsProcessing(false);
-        Alert.alert(
-          "Đặt hàng thành công",
-          `Cảm ơn bạn đã đặt hàng! Mã đơn hàng: ${order.orderNumber}`,
-          [
-            {
-              text: "Xem đơn hàng",
-              onPress: () => router.replace("/(tabs)/orders"),
-            },
-            {
-              text: "Tiếp tục mua sắm",
-              onPress: () => router.replace("/(tabs)/menu"),
-            },
-          ]
-        );
-      }, 1500);
+          if (response.status !== 200) {
+            throw new Error("Thanh toán bằng tiền mặt không thành công");
+          }
+          router.push("/order-success");
+          break;
+        case "cash_wallet":
+          const walletResponse = await paymentService.payWithWallet(order);
+          console.log("Wallet payment response:", walletResponse);
+          if (walletResponse.status !== 200) {
+            throw new Error("Thanh toán bằng ví tiền mặt không thành công");
+          }
+          router.push("/order-success");
+          break;
+        case "payos":
+          break; // Handle PayOS payment separately
+        default:
+          break;
+      }
     } catch (error) {
       console.error("Error placing order:", error);
-      setIsProcessing(false);
       Alert.alert("Lỗi", "Không thể đặt hàng. Vui lòng thử lại sau.");
+    } finally {
+      setIsProcessing(false);
     }
-  }, [
-    cartItems,
-    subtotal,
-    deliveryFee,
-    promoDiscount,
-    total,
-    selectedPayment,
-    deliveryAddress,
-    orderType,
-    pickupDateTime,
-    router,
-  ]);
-
+  }, [deliveryAddress, selectedPayment, validateForm, router]);
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -634,8 +615,8 @@ export default function PaymentScreen() {
                     mode="time"
                     is24Hour={true}
                     display="default"
+                    minimumDate={new Date(Date.now() + 30 * 60000)}
                     onChange={onTimeChange}
-                    minuteInterval={15}
                   />
                 )}
 

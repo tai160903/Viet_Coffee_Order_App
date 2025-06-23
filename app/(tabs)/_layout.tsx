@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Tabs } from "expo-router";
+import { jwtDecode } from "jwt-decode";
 import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 
@@ -17,7 +18,7 @@ const coffeeTheme = {
     tabBarBackground: "#FFFFFF",
   },
   dark: {
-    primary: "#D2691E", // Lighter coffee brown for dark mode
+    primary: "#D2691E",
     background: "#121212",
     card: "#1E1E1E",
     text: "#FFFFFF",
@@ -31,33 +32,23 @@ const coffeeTheme = {
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? coffeeTheme.dark : coffeeTheme.light;
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-
-  // Check auth status and cart items when component mounts
   useEffect(() => {
-    const checkAuthAndCart = async () => {
+    const checkAuth = async () => {
       try {
-        // Check auth status
         const token = await AsyncStorage.getItem("userToken");
-        setIsLoggedIn(!!token);
-
-        // Check cart items count
-        const cartData = await AsyncStorage.getItem("cart");
-        if (cartData) {
-          const cart = JSON.parse(cartData);
-          const count = cart.items?.length || 0;
-          setCartCount(count);
+        if (token) {
+          const decoded = jwtDecode<any>(token);
+          setUserRole(decoded?.role || null);
         }
       } catch (error) {
-        console.error("Error checking auth or cart:", error);
+        console.error("Error decoding token:", error);
+        setUserRole(null);
       }
     };
 
-    checkAuthAndCart();
-
-    // You could also set up an event listener to update cart count when it changes
+    checkAuth();
   }, []);
 
   return (
@@ -103,13 +94,12 @@ export default function TabLayout() {
         headerTitleAlign: "center",
       }}
     >
-      {/* Home Tab - New Addition */}
       <Tabs.Screen
         name="home"
         options={{
           title: "Trang chủ",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color} />
           ),
           headerTitle: "Viet Coffee",
         }}
@@ -145,7 +135,6 @@ export default function TabLayout() {
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
           headerTitle: "Giỏ hàng",
-          tabBarBadge: cartCount > 0 ? cartCount : undefined, // Only show badge when items exist
           tabBarBadgeStyle: {
             backgroundColor: "#FF6B6B",
           },

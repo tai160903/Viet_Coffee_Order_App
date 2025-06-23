@@ -6,6 +6,7 @@ import { Stack, useRouter } from "expo-router";
 import { jwtDecode } from "jwt-decode";
 import React, { useEffect, useState } from "react";
 import {
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { width } = useWindowDimensions();
 
@@ -44,6 +45,7 @@ export default function LoginScreen() {
     const checkToken = async () => {
       try {
         const token = await AsyncStorage.getItem("userToken");
+
         if (token) {
           try {
             const decoded = jwtDecode<JwtPayload>(token);
@@ -52,7 +54,7 @@ export default function LoginScreen() {
             if (decoded.exp > currentTime) {
               router.replace("/(tabs)/home");
             } else {
-              await AsyncStorage.removeItem("userToken");
+              await AsyncStorage.clear();
               Toast.show({
                 type: "info",
                 text1: "Phiên đăng nhập đã hết hạn",
@@ -61,11 +63,15 @@ export default function LoginScreen() {
             }
           } catch (decodeError) {
             console.error("Invalid token format:", decodeError);
-            await AsyncStorage.removeItem("userToken");
+            await AsyncStorage.clear();
           }
+        } else {
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error checking authentication:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -91,27 +97,53 @@ export default function LoginScreen() {
       return;
     }
     setLoading(true);
-    const response: any = await authService.login(username, password);
-    if (response.status !== 200) {
+    try {
+      const response: any = await authService.login(username, password);
+      if (response.status !== 200) {
+        Toast.show({
+          type: "error",
+          text1: response.data.message || "Đăng nhập thất bại",
+          text2: "Vui lòng thử lại sau.",
+        });
+        return;
+      }
+      console.log(
+        "Login response:",
+        JSON.stringify(response.data.data.customer)
+      );
+      AsyncStorage.setItem("userToken", response.data.data.accessToken);
+      AsyncStorage.setItem("refreshToken", response.data.data.refreshToken);
+      AsyncStorage.setItem(
+        "userData",
+        JSON.stringify(response.data.data.customer)
+      );
+      //decoded token to get user role
+      const decoded = jwtDecode<any>(response.data.data.accessToken);
+      console.log(
+        "Decoded token:",
+        decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
+      );
+      if (
+        decoded[
+          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        ].toLowerCase() === "customer"
+      ) {
+        router.replace("/(tabs)/home");
+      } else if (
+        decoded[
+          "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        ].toLowerCase() === "staff"
+      ) {
+        router.replace("/(tabs)/menu");
+      }
+    } catch (err) {
       Toast.show({
         type: "error",
-        text1: `${
-          response.data.message || "Vui lòng kiểm tra lại thông tin đăng nhập."
-        }`,
-        text2: "Vui lòng thử lại sau.",
+        text1: "Lỗi kết nối máy chủ",
+        text2: "Vui lòng kiểm tra mạng hoặc thử lại sau.",
       });
+    } finally {
       setLoading(false);
-      return;
-    } else {
-      await AsyncStorage.setItem("userToken", response.data.data.accessToken);
-      Toast.show({
-        type: "success",
-        text1: "Đăng nhập thành công!",
-        text2: "Chào mừng bạn trở lại!",
-      });
-
-      setLoading(false);
-      router.replace("/(tabs)/home");
     }
   };
 
@@ -146,7 +178,14 @@ export default function LoginScreen() {
           <View style={styles.headerSection}>
             <View style={styles.logoContainer}>
               <View style={styles.logoWrapper}>
-                <Ionicons name="cafe" size={logoSize * 0.6} color="#8B4513" />
+                <Image
+                  source={require("../assets/images/viet-coffee.png")}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: logoSize / 2,
+                  }}
+                />
               </View>
               <Text style={styles.logoText}>Việt Coffee</Text>
               <Text style={styles.subtitle}>Chào mừng trở lại!</Text>
@@ -222,14 +261,16 @@ export default function LoginScreen() {
 
               {/* Login Button */}
               <TouchableOpacity
-                style={styles.loginButton}
+                disabled={loading}
+                style={[styles.loginButton, loading && { opacity: 0.6 }]}
                 onPress={handleLogin}
                 activeOpacity={0.8}
               >
-                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                <Text style={styles.loginButtonText}>
+                  {loading ? "Đang xử lý..." : "Đăng nhập"}
+                </Text>
               </TouchableOpacity>
 
-              {/* Divider */}
               <View style={styles.orContainer}>
                 <View style={styles.orLine} />
                 <Text style={styles.orText}>HOẶC</Text>

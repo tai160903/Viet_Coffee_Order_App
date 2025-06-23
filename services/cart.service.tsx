@@ -34,9 +34,32 @@ const cartService = {
           },
         }
       );
+      console.log("Cart fetched successfully:", response.data.data);
       return response?.data?.data;
     } catch (error: any) {
       console.error("Error fetching cart:", error.message);
+      throw error;
+    }
+  },
+
+  deleteCartItem: async (cartItemId: string) => {
+    try {
+      console.log("Deleting cart item with ID:", cartItemId);
+      const token = await AsyncStorage.getItem("userToken");
+      const response = await axios.put(
+        `${process.env.EXPO_PUBLIC_API_URL}/Cart/delete-cart-item`,
+        { cartItemId },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token || ""}`,
+          },
+        }
+      );
+      console.log("Cart item deleted successfully:", response.data);
+      return response?.data?.data;
+    } catch (error: any) {
+      console.error("Error deleting cart item:", error.message);
       throw error;
     }
   },

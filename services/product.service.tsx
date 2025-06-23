@@ -5,6 +5,7 @@ const productService = {
     const response = await axios.get(
       `${process.env.EXPO_PUBLIC_API_URL}/Product`
     );
+    console.log("response", response);
     return response?.data?.data;
   },
   getDetailsProduct: async (id: string) => {

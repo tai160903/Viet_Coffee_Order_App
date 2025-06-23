@@ -182,7 +182,6 @@ export default function DetailScreen() {
         quantity: 1,
       })),
     };
-    console.log("addToCartForm", addToCartForm);
 
     try {
       const response = await cartService.addToCart(addToCartForm);

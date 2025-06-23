@@ -7,6 +7,7 @@ import {
   Image,
   Platform,
   StatusBar as RNStatusBar,
+  RefreshControl,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -40,7 +41,7 @@ export default function MenuScreen() {
   const [isGridView, setIsGridView] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const numColumns = width >= 768 ? 4 : 3;
+  const numColumns = width >= 768 ? 3 : 2;
   const cardWidth = (width - (numColumns + 1) * 16) / numColumns;
 
   const categories = useMemo(() => {
@@ -61,22 +62,14 @@ export default function MenuScreen() {
         "Error fetching menu data:",
         error instanceof Error ? error.message : error
       );
+    } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchMenu();
-  }, []);
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchMenu()
-      .then(() => setRefreshing(false))
-      .catch((error) => {
-        console.error("Error refreshing data:", error);
-        setRefreshing(false);
-      });
   }, []);
 
   const filteredItems = dataItems.filter((item) => {
@@ -150,6 +143,11 @@ export default function MenuScreen() {
         </View>
       </TouchableOpacity>
     );
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchMenu();
   };
 
   if (loading) {
@@ -243,8 +241,14 @@ export default function MenuScreen() {
               </Text>
             </View>
           }
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#8B4513"]}
+              tintColor="#8B4513"
+            />
+          }
         />
       </View>
     </SafeAreaView>

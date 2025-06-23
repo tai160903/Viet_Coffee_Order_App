@@ -5,6 +5,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Platform,
   StyleSheet,
+  Text,
   useColorScheme,
   useWindowDimensions,
 } from "react-native";
@@ -38,14 +39,6 @@ const darkTheme: Theme = {
   },
 };
 
-// Types
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
-
 export default function RootLayout() {
   // Hooks
   const colorScheme = useColorScheme();
@@ -76,53 +69,13 @@ export default function RootLayout() {
     [theme, width, isTablet, getFontSize]
   );
 
-  // // Check token and redirect if needed
-  // const checkUserToken = useCallback(async () => {
-  //   try {
-  //     setIsCheckingToken(true);
-  //     const token = await AsyncStorage.getItem("userToken");
-  //     setUserToken(token);
-
-  //     if (token) {
-  //       const userData = await AsyncStorage.getItem("user");
-  //       if (userData) {
-  //         try {
-  //           setUser(JSON.parse(userData));
-  //         } catch (parseError) {
-  //           console.error("Error parsing user data:", parseError);
-  //           setUser(null);
-  //         }
-  //       }
-  //     } else {
-  //       setUser(null);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error checking token:", error);
-  //     setUserToken(null);
-  //     setUser(null);
-  //   } finally {
-  //     setIsCheckingToken(false);
-  //   }
-  // }, []);
-
-  // Authentication and navigation control
-  // useEffect(() => {
-  //   checkUserToken().then(() => {
-  //     const inAuthGroup = ["index", "register"].includes(segments[0] as string);
-  //     const inTabsGroup = segments[0] === "(tabs)";
-
-  //     if (!userToken && !inAuthGroup && !isCheckingToken) {
-  //       router.replace("/");
-  //     } else if (userToken && inAuthGroup && !isCheckingToken) {
-  //       router.replace("/(tabs)/menu");
-  //     }
-  //   });
-  // }, [userToken, segments, isCheckingToken, router, checkUserToken]);
-
   // Main Layout Render
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["top", "right", "left", "bottom"]}
+      >
         <Stack
           screenOptions={{
             headerStyle: styles.headerStyle,
@@ -164,6 +117,15 @@ export default function RootLayout() {
             }}
           />
 
+          {/* Order Success Screen */}
+          <Stack.Screen
+            name="order-success"
+            options={{
+              headerTitle: "Đặt hàng thành công",
+              headerBackTitle: "Trở về",
+              headerRight: () => null,
+            }}
+          />
           {/* Tab Screens */}
           <Stack.Screen
             name="(tabs)"

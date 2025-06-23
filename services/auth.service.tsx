@@ -17,11 +17,6 @@ const authService = {
     email: string,
     password: string
   ): Promise<string> => {
-    console.log("Registering user with:", {
-      username,
-      email,
-      password,
-    });
     const response: any = await axios.post(
       `${process.env.EXPO_PUBLIC_API_URL}/User/register-customer`,
       {

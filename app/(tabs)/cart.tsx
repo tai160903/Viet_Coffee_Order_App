@@ -150,9 +150,9 @@ export default function CartScreen() {
   };
 
   // Remove item from cart
-  const removeItem = (itemId: string) => {
+  const removeItem = async (itemId: string) => {
     if (!cart) return;
-
+    const response = await cartService.deleteCartItem(itemId);
     const updatedItems = cart.cartItems.filter((item) => item.id !== itemId);
     const totalAmount = updatedItems.reduce(
       (sum, item) =>

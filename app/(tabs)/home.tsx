@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [bestSellers, setBestSellers] = useState<Product[]>([]);
-
+  const user = AsyncStorage.getItem("userData");
   useEffect(() => {
     const loadData = async () => {
       try {
